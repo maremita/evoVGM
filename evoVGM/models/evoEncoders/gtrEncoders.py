@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.distributions.dirichlet import Dirichlet
 from torch.distributions.kl import kl_divergence
 
-__author__ = "a.r."
+__author__ = "amine remita"
 
 
 class GTRSubRateIndDirEncoder(nn.Module):
@@ -105,7 +105,8 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
 #         print("r_samples shape {}".format(r_samples.shape)) # [sample_size, r_dim]
 #         print(r_samples)
 
-        r_kl = kl_divergence(r_dist_q, r_dist_p).expand(self.m_dim, 1) #.flatten()
+        #r_kl = kl_divergence(r_dist_q, r_dist_p).expand(self.m_dim, 1) #.flatten()
+        r_kl = kl_divergence(r_dist_q, r_dist_p).flatten()
 #         print("r_kl")
 #         print(r_kl.shape) # [m_dim, 1]
 #         print(r_kl)
@@ -163,10 +164,11 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
 #         print("f_samples shape {}".format(f_samples.shape)) # [sample_size, f_dim]
 #         print(f_samples)
 
-        f_kl = kl_divergence(f_dist_q, f_dist_p).expand(self.m_dim, 1) #.flatten()
-#         print("f_kl")
-#         print(f_kl.shape) # [m_dim, 1]
-#         print(f_kl)
+        #f_kl = kl_divergence(f_dist_q, f_dist_p).expand(self.m_dim, 1) #.flatten()
+        f_kl = kl_divergence(f_dist_q, f_dist_p).flatten()
+        #print("f_kl")
+        #print(f_kl.shape) # [1]
+        #print(f_kl)
 
         return f_samples, f_kl
 

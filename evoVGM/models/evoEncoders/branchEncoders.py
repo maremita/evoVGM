@@ -7,7 +7,79 @@ from torch.distributions.log_normal import LogNormal
 from torch.distributions.kl import kl_divergence
 
 
-__author__ = "a.r."
+__author__ = "amine remita"
+
+
+class BranchIndDeepLogNEncoder(nn.Module):
+
+    def __init__(
+            self,
+            m_dim,
+            h_dim,
+            n_layers=3, 
+            b_prior=torch.tensor([0.1, 0.1]),
+            device=torch.device("cpu")):
+
+        super().__init__()
+
+        self.m_dim = m_dim
+        self.h_dim = h_dim
+        self.b_dim = 1
+        self.n_layers = n_layers
+        self.device = device
+
+        # hyper-param for branch mean and sigma LogNormal prior
+        self.prior_mu, self.prior_sigma = b_prior
+
+        self.noise = torch.zeros((self.m_dim, self.b_dim)).uniform_()
+#         self.noise = torch.zeros((self.m_dim, self.b_dim)).normal_()
+
+        layers = [nn.Linear(self.b_dim, self.h_dim, bias=True), nn.ReLU()]
+
+        for i in range(1, self.n_layers-1):
+            layers.extend([nn.Linear(self.h_dim, self.h_dim, bias=True), nn.ReLU()])
+
+        self.net = nn.Sequential(*layers)
+
+#         self.net_mu = nn.Linear(self.h_dim, self.b_dim)
+        self.net_mu = nn.Sequential(
+            nn.Linear(self.h_dim, self.b_dim),
+            nn.LogSigmoid()) # LogSigmoid, Sigmoid, Tanh, SiLU
+
+#         self.net_sigma = nn.Linear(self.h_dim, self.b_dim)
+        self.net_sigma = nn.Sequential(
+            nn.Linear(self.h_dim, self.b_dim),
+            nn.Softplus())
+
+    def forward(self, sample_size):
+
+        enc = self.net(self.noise)
+        b_mu = self.net_mu(enc)
+        b_sigma = self.net_sigma(enc)
+        
+        # Prior distribution
+        b_dist_p = LogNormal(self.prior_mu, self.prior_sigma)
+
+        # Approximate distribution
+        b_dist_q = LogNormal(b_mu, b_sigma)
+
+        # Sample branch lengths
+        #b_samples = self.sample(b_mu, b_sigma, sample_size)
+        b_samples = b_dist_q.rsample(torch.Size([sample_size]))
+#         print("b_samples shape {}".format(b_samples.shape)) # [sample_size, m_dim, b_dim]
+#         print(b_samples)
+
+        b_kl = kl_divergence(b_dist_q, b_dist_p).view(self.m_dim, 1)
+#         print("b_kl")
+#         print(b_kl.shape) # [m_dim, 1]
+#         print(b_kl)
+        
+        return b_samples, b_kl
+
+    #def sample(self, mean, std, n_sample):
+    #    # Reparameterized sampling of lognormal
+    #    eps = torch.FloatTensor(torch.Size([n_sample, self.m_dim, self.b_dim])).normal_().to(self.device)
+    #    return torch.exp(eps.mul(std).add_(mean))
 
 
 class BranchIndGammaEncoder(nn.Module):
@@ -131,73 +203,4 @@ class BranchIndDeepGammaEncoder(nn.Module):
         return b_samples, b_kl
 
 
-class BranchIndDeepLogNEncoder(nn.Module):
-
-    def __init__(
-            self,
-            m_dim,
-            h_dim,
-            n_layers=3, 
-            b_prior=torch.tensor([0.1, 0.1]),
-            device=torch.device("cpu")):
-
-        super().__init__()
-
-        self.m_dim = m_dim
-        self.h_dim = h_dim
-        self.b_dim = 1
-        self.n_layers = n_layers
-        self.device = device
-
-        # hyper-param for branch mean and sigma LogNormal prior
-        self.prior_mu, self.prior_sigma = b_prior
-
-        self.noise = torch.zeros((self.m_dim, self.b_dim)).uniform_()
-#         self.noise = torch.zeros((self.m_dim, self.b_dim)).normal_()
-
-        layers = [nn.Linear(self.b_dim, self.h_dim, bias=True), nn.ReLU()]
-
-        for i in range(1, self.n_layers-1):
-            layers.extend([nn.Linear(self.h_dim, self.h_dim, bias=True), nn.ReLU()])
-
-        self.net = nn.Sequential(*layers)
-
-#         self.net_mu = nn.Linear(self.h_dim, self.b_dim)
-        self.net_mu = nn.Sequential(
-            nn.Linear(self.h_dim, self.b_dim),
-            nn.LogSigmoid()) # LogSigmoid, Sigmoid, Tanh, SiLU
-
-#         self.net_sigma = nn.Linear(self.h_dim, self.b_dim)
-        self.net_sigma = nn.Sequential(
-            nn.Linear(self.h_dim, self.b_dim),
-            nn.Softplus())
-
-    def forward(self, sample_size):
-
-        enc = self.net(self.noise)
-        b_mu = self.net_mu(enc)
-        b_sigma = self.net_sigma(enc)
-        
-        # Sample branch lengths
-        b_samples = self.sample(b_mu, b_sigma, sample_size)
-#         print("b_samples shape {}".format(b_samples.shape)) # [sample_size, m_dim, b_dim]
-#         print(b_samples)
-
-        # Prior distribution
-        b_dist_p = LogNormal(self.prior_mu, self.prior_sigma)
-
-        # Approximate distribution
-        b_dist_q = LogNormal(b_mu, b_sigma)
-
-        b_kl = kl_divergence(b_dist_q, b_dist_p).view(self.m_dim, 1)
-#         print("b_kl")
-#         print(b_kl.shape) # [m_dim, 1]
-#         print(b_kl)
-        
-        return b_samples, b_kl
-
-    def sample(self, mean, std, n_sample):
-        # Reparameterized sampling of lognormal
-        eps = torch.FloatTensor(torch.Size([n_sample, self.m_dim, self.b_dim])).normal_().to(self.device)
-        return torch.exp(eps.mul(std).add_(mean))
 

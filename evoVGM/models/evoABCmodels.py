@@ -1,23 +1,23 @@
 from evoVGM.utils import timeSince
 
-from abc import ABC #, abstractmethod
+from abc import ABC 
 import time
 
 import numpy as np
 import torch
 
-__author__ = "a.r."
+__author__ = "amine remita"
 
 
-class BaseEvoVGM_KL(ABC):
+class BaseEvoVGM(ABC):
 
     def generate(
             self, 
             sites,
             site_counts,
             latent_sample_size=1, 
-            sample_temp=1,
-            alpha_kl=0.1):
+            sample_temp=0.1,
+            alpha_kl=0.001):
 
         with torch.no_grad():
             if site_counts == None:
@@ -31,7 +31,7 @@ class BaseEvoVGM_KL(ABC):
             X_train,
             X_train_counts,
             L,
-            sample_temp,
+            sample_temp=0.1,
             alpha_kl=0.001,
             max_iter=100,
             optim="adam",

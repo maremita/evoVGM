@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from evoVGM.models import EvoVGTRW_KL 
 from evoVGM.simulations import evolve_seqs_full_homogeneity 
 from evoVGM.data import build_msa_categorical
 from evoVGM.utils import timeSince, get_categorical_prior, get_branch_prior 
+from evoVGM.models import EvoVGM_GTR 
 
 import sys
 import os
@@ -104,7 +104,7 @@ branch_prior = get_branch_prior(branch_prior_conf, verbose=verbose)
 # Instanciate the model
 
 # EvoVGTRW_KL infer ancestor and branch length and GTR params latent variables
-evoModel = EvoVGTRW_KL(x_dim, a_dim, h_dim, m_dim,
+evoModel = EvoVGM_GTR(x_dim, a_dim, h_dim, m_dim,
         ancestor_prior=ancestor_prior,
         branch_prior=branch_prior,
         rates_prior=rates_prior,

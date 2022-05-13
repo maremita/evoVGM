@@ -12,28 +12,38 @@ def build_star_tree(b_lengths):
     return newick
 
 def evolve_seqs_full_homogeneity(
-        fasta_file=None, 
-        nb_sites=100, 
-        branch_lengths="0.1,0.1", 
-        mu=None,
+        nwk_tree,
+        nb_sites=10, 
+        fasta_file=False,
+        subst_rates=None,
         state_freqs=None,
+        return_anc=True,
+        seed=None,
         verbose=False):
 
-    # Evolve sequences with complete homogeneity
-    # (all sites and branches evolve according to a single model)
-    if verbose: print("Evolving new sequences with the amazing Pyvolve for {}".format(fasta_file))
+    # Evolve sequences
+    if verbose: print("Evolving new sequences with the amazing "\
+            "Pyvolve for {}".format(fasta_file))
+    tree = read_tree(tree=nwk_tree)
 
-    tree = read_tree(tree=build_star_tree(branch_lengths))
+    parameters = None
+    if subst_rates is not None or state_freqs is not None:
+        parameters = dict()
 
-    if mu is not None and state_freqs is not None :  
-        m = Model("nucleotide", {"mu":mu, "state_freqs":state_freqs})
-    else:
-        m = Model("nucleotide")
+        if subst_rates is not None:
+            parameters.update(mu=subst_rates)
+
+        if state_freqs is not None:
+            parameters.update(state_freqs=state_freqs)
+
+    m = Model("nucleotide", parameters=parameters) 
 
     p = Partition(size=nb_sites, models=m)
     e = Evolver(partitions=p, tree=tree)
-    e(seqfile=fasta_file, infofile=False, ratefile=False)
 
-    seqdict = e.get_sequences(anc=True)
+    e(seqfile=fasta_file, infofile=False, ratefile=False,
+            seed=seed)
+
+    seqdict = e.get_sequences(anc=return_anc)
     
     return seqdict["root"], [seqdict[s] for s in seqdict if s != "root"]
