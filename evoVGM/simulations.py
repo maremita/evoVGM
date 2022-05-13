@@ -21,6 +21,8 @@ def evolve_seqs_full_homogeneity(
         seed=None,
         verbose=False):
 
+    gtr_r = ["AG", "AC", "AT", "GC", "GT", "CT"]
+ 
     # Evolve sequences
     if verbose: print("Evolving new sequences with the amazing "\
             "Pyvolve for {}".format(fasta_file))
@@ -31,10 +33,25 @@ def evolve_seqs_full_homogeneity(
         parameters = dict()
 
         if subst_rates is not None:
-            parameters.update(mu=subst_rates)
+            rs = subst_rates
+            if isinstance(subst_rates, float):
+                rs = {g:subst_rates for g in gtr_r}
+
+            elif isinstance(subst_rates, list):
+                assert len(subst_rates) == 6
+                rs = {g:float(r) for g, r in zip(gtr_r, subst_rates)}
+
+            parameters.update(mu=rs)
 
         if state_freqs is not None:
-            parameters.update(state_freqs=state_freqs)
+            fs = state_freqs
+            if isinstance(state_freqs, float):
+                fs = [state_freqs]*4
+
+            elif isinstance(state_freqs, list):
+                assert len(state_freqs) == 4
+
+            parameters.update(state_freqs=fs)
 
     m = Model("nucleotide", parameters=parameters) 
 
@@ -45,5 +62,6 @@ def evolve_seqs_full_homogeneity(
             seed=seed)
 
     seqdict = e.get_sequences(anc=return_anc)
-    
-    return seqdict["root"], [seqdict[s] for s in seqdict if s != "root"]
+
+    return seqdict["root"],\
+            [seqdict[s] for s in seqdict if s != "root"]

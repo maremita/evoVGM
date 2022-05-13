@@ -16,6 +16,9 @@ setup(
             'Model using Multiple Sequence Alignments',
     author='a.r',
     packages=find_packages(),
-    scripts=["scripts/train_evogtr.py"],
+    scripts=[
+        "experiments/train_evogtr.py",
+        "experiments/eval_run_replicates.py",
+        ],
     install_requires=INSTALL_REQUIRES
 )

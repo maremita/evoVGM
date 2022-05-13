@@ -24,34 +24,46 @@ class GTRSubRateIndDirEncoder(nn.Module):
 
         self.pr = rates_prior # Hyper-param for rate prior
 
-        self.rates = nn.Parameter(torch.zeros(self.r_dim), requires_grad=True)
+        self.rates = nn.Parameter(
+                torch.zeros(self.r_dim),
+                requires_grad=True)
         nn.init.uniform_(self.rates.data) # uniform_ xavier_uniform_
-#         nn.init.xavier_uniform_(self.rates.data) # uniform_ xavier_uniform_
 
-
-    def forward(self, sample_size):
+        # Prior distribution
+        self.r_dist_p = Dirichlet(self.pr)
+        
+    def forward(
+            self, 
+            sample_size=1,
+            min_clamp=False,    # should be <= to 10^-7
+            max_clamp=False):
         
         self.rates.data = F.softplus(self.rates.data)
 #         print("rates")
 #         print(self.rates.shape) # [6]
 #         print(self.rates)
 
-        # Prior distribution
-        r_dist_p = Dirichlet(self.pr)
-        
         # Approximate distribution
         r_dist_q = Dirichlet(self.rates)
 
-        r_samples = r_dist_q.rsample(torch.Size([sample_size]))
-#         print("r_samples shape {}".format(r_samples.shape)) # [sample_size, r_dim]
-#         print(r_samples)
+        samples = r_dist_q.rsample(torch.Size([sample_size]))
+#         print("samples shape {}".format(samples.shape)) # [sample_size, r_dim]
+#         print(samples)
 
-        r_kl = kl_divergence(r_dist_q, r_dist_p).expand(self.m_dim, 1) #.flatten()
+        if not isinstance(min_clamp, bool):
+            if isinstance(min_clamp, (float, int)):
+                samples = samples.clamp(min=min_clamp)
+
+        if not isinstance(max_clamp, bool):
+            if isinstance(max_clamp, (float, int)):
+                samples = samples.clamp(max=max_clamp)
+
+        r_kl = kl_divergence(r_dist_q, self.r_dist_p).flatten()
 #         print("r_kl")
 #         print(r_kl.shape) # [m_dim, 1]
 #         print(r_kl)
 
-        return r_samples, r_kl
+        return samples, r_kl
 
 
 class GTRSubRateIndDeepDirEncoder(nn.Module):
@@ -78,40 +90,54 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
         self.noise = torch.ones((self.in_dim)).uniform_()
 #         self.noise = torch.ones((self.r_dim)).normal_()
 
-        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True), nn.ReLU()]
+        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True),
+                nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
-            layers.extend([nn.Linear(self.h_dim, self.h_dim, bias=True), nn.ReLU()])
+            layers.extend([nn.Linear(self.h_dim, self.h_dim,
+                bias=True), nn.ReLU()])
 
-        layers.extend([nn.Linear(self.h_dim, self.r_dim, bias=True), nn.Softplus()])
+        layers.extend([nn.Linear(self.h_dim, self.r_dim, bias=True),
+            nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
 
-    def forward(self, sample_size):
+        # Prior distribution
+        self.r_dist_p = Dirichlet(self.pr)
+        
+    def forward(
+            self, 
+            sample_size=1,
+            min_clamp=False,    # should be <= to 10^-7
+            max_clamp=False):
         
         rates = self.net(self.noise)
 #         print("rates")
 #         print(rates.shape) # [6]
 #         print(rates)
 
-        # Prior distribution
-        r_dist_p = Dirichlet(self.pr)
-        
         # Approximate distribution
         r_dist_q = Dirichlet(rates)
         
-#         r_samples = r_dist_q.rsample(torch.Size([sample_size]))
-        r_samples = r_dist_q.rsample(torch.Size([sample_size]))
-#         print("r_samples shape {}".format(r_samples.shape)) # [sample_size, r_dim]
-#         print(r_samples)
+#         samples = r_dist_q.rsample(torch.Size([sample_size]))
+        samples = r_dist_q.rsample(torch.Size([sample_size]))
+#         print("samples shape {}".format(samples.shape)) # [sample_size, r_dim]
+#         print(samples)
 
-        #r_kl = kl_divergence(r_dist_q, r_dist_p).expand(self.m_dim, 1) #.flatten()
-        r_kl = kl_divergence(r_dist_q, r_dist_p).flatten()
+        if not isinstance(min_clamp, bool):
+            if isinstance(min_clamp, (float, int)):
+                samples = samples.clamp(min=min_clamp)
+
+        if not isinstance(max_clamp, bool):
+            if isinstance(max_clamp, (float, int)):
+                samples = samples.clamp(max=max_clamp)
+
+        r_kl = kl_divergence(r_dist_q, self.r_dist_p).flatten()
 #         print("r_kl")
 #         print(r_kl.shape) # [m_dim, 1]
 #         print(r_kl)
 
-        return r_samples, r_kl
+        return samples, r_kl
 
 
 class GTRfreqIndDeepDirEncoder(nn.Module):
@@ -138,37 +164,51 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
         self.noise = torch.ones((self.in_dim)).uniform_()
 #         self.noise = torch.ones((self.f_dim)).normal_()
 
-        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True), nn.ReLU()]
+        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True),
+                nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
-            layers.extend([nn.Linear(self.h_dim, self.h_dim, bias=True), nn.ReLU()])
+            layers.extend([nn.Linear(self.h_dim, self.h_dim,
+                bias=True), nn.ReLU()])
 
-        layers.extend([nn.Linear(self.h_dim, self.f_dim, bias=True), nn.Softplus()])
+        layers.extend([nn.Linear(self.h_dim, self.f_dim, bias=True),
+            nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
 
-    def forward(self, sample_size):
+        # Prior distribution
+        self.f_dist_p = Dirichlet(self.pi)
+ 
+    def forward(
+            self, 
+            sample_size=1,
+            min_clamp=False,    # should be <= to 10^-7
+            max_clamp=False):
         
         freqs = self.net(self.noise)
 #         print("freqs")
 #         print(freqs.shape) # [f_dim]
 #         print(freqs)
 
-        # Prior distribution
-        f_dist_p = Dirichlet(self.pi)
-        
         # Approximate distribution
         f_dist_q = Dirichlet(freqs)
         
-        f_samples = f_dist_q.rsample(torch.Size([sample_size]))
-#         print("f_samples shape {}".format(f_samples.shape)) # [sample_size, f_dim]
-#         print(f_samples)
+        samples = f_dist_q.rsample(torch.Size([sample_size]))
+#         print("samples shape {}".format(samples.shape)) # [sample_size, f_dim]
+#         print(samples)
 
-        #f_kl = kl_divergence(f_dist_q, f_dist_p).expand(self.m_dim, 1) #.flatten()
-        f_kl = kl_divergence(f_dist_q, f_dist_p).flatten()
+        if not isinstance(min_clamp, bool):
+            if isinstance(min_clamp, (float, int)):
+                samples = samples.clamp(min=min_clamp)
+
+        if not isinstance(max_clamp, bool):
+            if isinstance(max_clamp, (float, int)):
+                samples = samples.clamp(max=max_clamp)
+
+        f_kl = kl_divergence(f_dist_q, self.f_dist_p).flatten()
         #print("f_kl")
         #print(f_kl.shape) # [1]
         #print(f_kl)
 
-        return f_samples, f_kl
+        return samples, f_kl
 

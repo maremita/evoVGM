@@ -4,13 +4,41 @@ from abc import ABC, abstractmethod
 import re
 
 import numpy as np
+import torch
 
-__all__ = [ 'FullNucCatCollection', 'build_cats',
-        'build_cats_Xy_data', 'MSANucCatCollection',
-        'build_msa_categorical', 'build_msa_Xy_categorical']
+__all__ = [
+        'FullNucCatCollection',
+        'build_categorical',
+        'MSANucCatCollection',
+        'build_msa_categorical']
 
-__author__ = "ar"
+__author__ = "amine"
 
+
+nuc2cat = {
+        'A':[1.,0.,0.,0.], 'G':[0.,1.,0.,0.], 
+        'C':[0.,0.,1.,0.], 'T':[0.,0.,0.,1.],
+        'U':[0.,0.,0.,1.], 'R':[.5,.5,0.,0.],
+        'Y':[0.,0.,.5,.5], 'S':[0.,.5,.5,0.], 
+        'W':[.5,0.,0.,.5], 'K':[0.,.5,0.,.5], 
+        'M':[.5,0.,.5,0.], 'B':[0.,1/3,1/3,1/3], 
+        'D':[1/3,1/3,0.,1/3], 'H':[1/3,0.,1/3,1/3],
+        'V':[1/3,1/3,1/3,0.], 'N':[.25,.25,.25,.25],
+        '-':[.25,.25,.25,.25]#, '?':[.25,.25,.25,.25]
+        }
+
+# pl = partial likelihood
+nuc2pl = {
+        'A':[1.,0.,0.,0.], 'G':[0.,1.,0.,0.], 
+        'C':[0.,0.,1.,0.], 'T':[0.,0.,0.,1.],
+        'U':[0.,0.,0.,1.], 'R':[1.,1.,0.,0.],
+        'Y':[0.,0.,1.,1.], 'S':[0.,1.,1.,0.], 
+        'W':[1.,0.,0.,1.], 'K':[0.,1.,0.,1.], 
+        'M':[1.,0.,1.,0.], 'B':[0.,1.,1.,1.], 
+        'D':[1.,1.,0.,1.], 'H':[1.,0.,1.,1.],
+        'V':[1.,1.,1.,0.], 'N':[1.,1.,1.,1.],
+        '-':[1.,1.,1.,1.]#, '?':[1.,1.,1.,1.]
+        }
 
 # #####
 # Base collections
@@ -55,7 +83,7 @@ class BaseCollection(ABC):
                     sequences.append(seq)
                 else: print("Input object {} is not a string".format(seq))
         elif not isinstance(seqs, SeqCollection):
-            raise ValueError("Input sequences should be string, list of string or SeqCollection")
+            raise("Input sequences should be string, list of string or SeqCollection")
 
         else : sequences = seqs
 
@@ -64,20 +92,15 @@ class BaseCollection(ABC):
 
 class FullNucCatCollection(BaseCollection):
 
-    nuc2cat = {
-            'A':[1.,0.,0.,0.], 'G':[0.,1.,0.,0.], 
-            'C':[0.,0.,1.,0.], 'T':[0.,0.,0.,1.],
-            'U':[0.,0.,0.,1.], 'R':[.5,.5,0.,0.],
-            'Y':[0.,0.,.5,.5], 'S':[0.,.5,.5,0.], 
-            'W':[.5,0.,0.,.5], 'K':[0.,.5,0.,.5], 
-            'M':[.5,0.,.5,0.], 'B':[0.,1/3,1/3,1/3], 
-            'D':[1/3,1/3,0.,1/3], 'H':[1/3,0.,1/3,1/3],
-            'V':[1/3,1/3,1/3,0.], 'N':[.25,.25,.25,.25]
-            }
+    def __init__(self, sequences, nuc_cat=True, dtype=np.float32):
 
-    def __init__(self, sequences, dtype=np.float32):
+        if nuc_cat:
+            self.nuc2rep = nuc2cat
+        else:
+            self.nuc2rep = nuc2pl
+
         self.dtype = dtype
-        self.alphabet = "".join(self.nuc2cat.keys())
+        self.alphabet = "".join(self.nuc2rep.keys())
         sequences = self.check_sequences(sequences)
         #
         self.ids = []
@@ -89,28 +112,24 @@ class FullNucCatCollection(BaseCollection):
         sequence = sequence.upper()
         seq_array = list(re.sub(r'[^'+self.alphabet+']', 'N',
             sequence, flags=re.IGNORECASE))
-        seq_cat = np.array([self.nuc2cat[i] for i in seq_array],
+        seq_cat = np.array([self.nuc2rep[i] for i in seq_array],
                 dtype=self.dtype)
         self.data.append(seq_cat)
 
         return self
 
-class MSANucCatCollection(BaseCollection):
- 
-    nuc2cat = {
-            'A':[1.,0.,0.,0.], 'G':[0.,1.,0.,0.], 
-            'C':[0.,0.,1.,0.], 'T':[0.,0.,0.,1.],
-            'U':[0.,0.,0.,1.], 'R':[.5,.5,0.,0.],
-            'Y':[0.,0.,.5,.5], 'S':[0.,.5,.5,0.], 
-            'W':[.5,0.,0.,.5], 'K':[0.,.5,0.,.5], 
-            'M':[.5,0.,.5,0.], 'B':[0.,1/3,1/3,1/3], 
-            'D':[1/3,1/3,0.,1/3], 'H':[1/3,0.,1/3,1/3],
-            'V':[1/3,1/3,1/3,0.], 'N':[.25,.25,.25,.25]
-            }
 
-    def __init__(self, sequences, dtype=np.float32):
+class MSANucCatCollection(BaseCollection):
+
+    def __init__(self, sequences, nuc_cat=True, dtype=np.float32):
+ 
+        if nuc_cat: 
+            self.nuc2rep = nuc2cat
+        else:
+            self.nuc2rep = nuc2pl
+
         self.dtype = dtype
-        self.alphabet = "".join(self.nuc2cat.keys())
+        self.alphabet = "".join(self.nuc2rep.keys())
         sequences = self.check_sequences(sequences)
         #
         self.msa_len = len(sequences[0])
@@ -127,7 +146,7 @@ class MSANucCatCollection(BaseCollection):
         assert len(seq_array) == self.msa_len
 
         for i, ind_char in enumerate(seq_array):
-            self.data[i, ind] = self.nuc2cat[ind_char]
+            self.data[i, ind] = self.nuc2rep[ind_char]
 
         return self
 
@@ -135,25 +154,22 @@ class MSANucCatCollection(BaseCollection):
 # Data build functions
 # ####################
 
-def build_cats(seq_data, dtype=np.float32):
+def build_categorical(
+        seq_data,
+        nuc_cat=True,
+        dtype=np.float32):
 
-        return FullNucCatCollection(seq_data, dtype=dtype)
+    return FullNucCatCollection(
+            seq_data, 
+            nuc_cat=nuc_cat, 
+            dtype=dtype)
 
-def build_cats_Xy_data(seq_data, dtype=np.float32):
-    
-    obj_cats = build_cats(seq_data, dtype=dtype)
-    X_data = obj_cats.data
-    y_data = np.asarray(obj_cats.ids)
+def build_msa_categorical(
+        seq_data,
+        nuc_cat=True,
+        dtype=np.float32):
 
-    return X_data, y_data
-
-def build_msa_categorical(seq_data, dtype=np.float32):
-    return MSANucCatCollection(seq_data, dtype=dtype)
-
-def build_msa_Xy_categorical(seq_data, dtype=np.float32):
-
-    obj_cats = build_msa_categorical(seq_data, dtype=dtype)
-    X_data = obj_cats.data
-    y_data = np.asarray(obj_cats.ids)
-
-    return X_data, y_data
+    return MSANucCatCollection(
+            seq_data,
+            nuc_cat=nuc_cat,
+            dtype=dtype)

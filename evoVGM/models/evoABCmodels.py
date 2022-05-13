@@ -21,10 +21,16 @@ class BaseEvoVGM(ABC):
 
         with torch.no_grad():
             if site_counts == None:
-                site_counts = torch.ones(sites.shape[0]).to(self.device)
+                site_counts = torch.ones(sites.shape[0]).to(
+                        self.device)
             # Don't shuffle sites
-            return self(sites, site_counts, latent_sample_size, sample_temp, 
-                    alpha_kl=alpha_kl, shuffle_sites=False)
+            return self(
+                    sites,
+                    site_counts,
+                    latent_sample_size,
+                    sample_temp, 
+                    alpha_kl=alpha_kl, 
+                    shuffle_sites=False)
 
     def fit(
             self,
@@ -43,17 +49,19 @@ class BaseEvoVGM(ABC):
 
         if optim == 'adam':
             optimizer = torch.optim.Adam(self.parameters(), 
-                    lr=optim_learning_rate, weight_decay=optim_weight_decay)
+                    lr=optim_learning_rate,
+                    weight_decay=optim_weight_decay)
         else:
             optimizer = torch.optim.SGD(evoModel.parameters(),
-                    lr=optim_learning_rate, weight_decay=optim_weight_decay)
+                    lr=optim_learning_rate,
+                    weight_decay=optim_weight_decay)
 
         start = time.time()
         N_dim = X_train_counts.sum()
 
         if X_val_counts is not None: N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
-        
+ 
         self.elbos_list = []
         self.lls_list = []
         self.kls_list = []
@@ -67,7 +75,12 @@ class BaseEvoVGM(ABC):
 
             optimizer.zero_grad()
             try:
-                elbos, lls, kls, _, _, _, _, _ = self(X_train, X_train_counts, L, sample_temp, alpha_kl)
+                elbos, lls, kls, _, _, _, _, _ = self(
+                        X_train,
+                        X_train_counts,
+                        L,
+                        sample_temp,
+                        alpha_kl)
 
                 loss = - elbos
                 loss.backward()
@@ -82,8 +95,12 @@ class BaseEvoVGM(ABC):
             with torch.no_grad():
                 if X_val is not None:
                     try:
-                        elbos_val, lls_val, kls_val, _, _, _, _, _ = self.generate(X_val, X_val_counts, 
-                                L, sample_temp, alpha_kl)
+                        elbos_val, lls_val, kls_val, _, _, _, _, _ =\
+                                self.generate(
+                                        X_val,
+                                        X_val_counts, 
+                                        L, sample_temp,
+                                        alpha_kl)
                     except Exception as e:
                         print("\nStopping training at epoch {} because of an exception in generate()".format(epoch))
                         print(e)

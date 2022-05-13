@@ -22,11 +22,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                  a_dim,
                  h_dim,
                  m_dim,
-                 a_layers=3,
-                 b_layers=3,
-                 r_layers=3,
-                 f_layers=3,
-                 x_layers=3,
+                 nb_layers=3,
                  ancestor_prior=torch.ones(4)/4,
                  branch_prior=torch.tensor([0.1, 0.1]),
                  rates_prior=torch.ones(6),
@@ -39,11 +35,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         self.a_dim = a_dim
         self.h_dim = h_dim
         self.m_dim = m_dim
-        self.a_layers = a_layers
-        self.b_layers = b_layers
-        self.r_layers = r_layers
-        self.f_layers = f_layers
-        self.x_layers = x_layers
+        self.nb_layers = nb_layers
         # hyper priors
         self.ancestor_prior = ancestor_prior
         self.branch_prior = branch_prior
@@ -57,7 +49,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                 self.x_dim*self.m_dim,
                 self.h_dim, 
                 self.a_dim, 
-                n_layers=self.a_layers, 
+                n_layers=self.nb_layers, 
                 ancestor_prior=self.ancestor_prior,
                 device=self.device)
 
@@ -65,7 +57,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         self.branchEncoder = BranchIndDeepLogNEncoder(
                 self.m_dim, 
                 self.h_dim,
-                n_layers=self.b_layers,
+                n_layers=self.nb_layers,
                 b_prior=self.branch_prior,
                 device=self.device)
 
@@ -73,7 +65,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         self.gtrSubEncoder = GTRSubRateIndDeepDirEncoder(
                 self.m_dim,
                 self.h_dim, 
-                n_layers=self.r_layers,
+                n_layers=self.nb_layers,
                 rates_prior=self.rates_prior,
                 device=self.device)
     
@@ -81,7 +73,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         self.gtrFreqEncoder = GTRfreqIndDeepDirEncoder(
                 self.m_dim,
                 self.h_dim,
-                n_layers=self.f_layers, 
+                n_layers=self.nb_layers, 
                 freqs_prior=self.freqs_prior,
                 device=self.device)
         # decoder
