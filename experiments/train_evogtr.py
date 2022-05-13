@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from evoVGM.simulations import evolve_seqs_full_homogeneity 
+from evoVGM.simulations import build_star_tree
 from evoVGM.data import build_msa_categorical
 from evoVGM.utils import timeSince, get_categorical_prior, get_branch_prior 
 from evoVGM.models import EvoVGM_GTR 
@@ -69,20 +70,23 @@ if deterministic:
 
 # Data preparation
 alignment_len = 10000
-f_A = 0.1; f_C = 0.45 ; f_G = 0.3; f_T = 0.15;
-m_AC = 0.05; m_AG = 0.16; m_AT = 0.16; m_CG = 0.09; m_CT = 0.24; m_GT = 0.3;
-
 b_str = "0.12,0.29,0.45,0.14"
 
-m = {"AC":m_AC, "AG":m_AG, "AT":m_AT, "CG":m_CG, "CT":m_CT, "GT":m_GT}
-f = [f_A, f_C, f_G, f_T]
+#            "AG"  "AC"  "AT"  "GC"  "GT" "CT"
+sim_rates = [0.16, 0.05, 0.16, 0.09, 0.3, 0.24]
+
+#             A     C    G     T
+sim_freqs = [0.1, 0.45, 0.3, 0.15]
+
+tree=build_star_tree(b_str)
 
 ancestor, sequences = evolve_seqs_full_homogeneity(
+        tree,
         fasta_file=None, 
         nb_sites=alignment_len,
-        branch_lengths=b_str,
-        mu=m,
-        state_freqs=f,
+        subst_rates=sim_rates,
+        state_freqs=sim_freqs,
+        return_anc=True,
         verbose=verbose)
 
 motifs_cats = build_msa_categorical(sequences)
@@ -96,9 +100,12 @@ m_dim = len(sequences) # Number of sequences
 print_every = 10
 
 # Get prior values
-ancestor_prior = get_categorical_prior(ancestor_prior_conf, "ancestor", verbose=verbose)
-rates_prior = get_categorical_prior(rates_prior_conf, "rates", verbose=verbose)
-freqs_prior = get_categorical_prior(freqs_prior_conf, "freqs", verbose=verbose)
+ancestor_prior = get_categorical_prior(ancestor_prior_conf,
+        "ancestor", verbose=verbose)
+rates_prior = get_categorical_prior(rates_prior_conf, "rates",
+        verbose=verbose)
+freqs_prior = get_categorical_prior(freqs_prior_conf, "freqs",
+        verbose=verbose)
 branch_prior = get_branch_prior(branch_prior_conf, verbose=verbose)
 
 # Instanciate the model
@@ -115,9 +122,11 @@ evoModel = EvoVGM_GTR(x_dim, a_dim, h_dim, m_dim,
 
 # SGD Optimizer
 if optim == "adam":
-    optimizer = torch.optim.Adam(evoModel.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer = torch.optim.Adam(evoModel.parameters(), 
+            lr=learning_rate, weight_decay=weight_decay)
 else:
-    optimizer = torch.optim.SGD(evoModel.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(evoModel.parameters(),
+            lr=learning_rate, weight_decay=weight_decay)
 
 start = time.time()
 n_dim = X_counts.sum()
@@ -126,8 +135,7 @@ for epoch in range(1, n_epochs + 1):
 
     optimizer.zero_grad()
     try:
-        elbos, lls, kls, ancestors, branches, gtrrates, gtrfreqs, xrecons = evoModel(
-                X, X_counts, nb_samples, sample_temp, alpha_kl)
+        elbos, lls, kls, ancestors, branches, gtrrates, gtrfreqs, xrecons = evoModel(X, X_counts, nb_samples, sample_temp, alpha_kl)
         loss = - elbos
         loss.backward()
         optimizer.step()

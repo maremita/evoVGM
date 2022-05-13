@@ -11,10 +11,15 @@ import seaborn as sns
 __author__ = "amine remita"
 
 
-def plt_elbo_ll_kl_rep_figure(scores, out_file,
-        print_xtick_every=10, usetex=False,
-        y_limits=[-10, 0], title="evoModel",
+def plt_elbo_ll_kl_rep_figure(
+        scores,
+        out_file,
+        print_xtick_every=10,
+        usetex=False,
+        y_limits=[-10, 0],
+        title="evoModel",
         plot_validation=False):
+
     fig_format= "png"
     fig_dpi = 150
 

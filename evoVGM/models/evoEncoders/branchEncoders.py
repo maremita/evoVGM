@@ -181,10 +181,12 @@ class BranchIndDeepGammaEncoder(nn.Module):
         self.noise = torch.zeros((self.m_dim, self.b_dim)).uniform_()
 #         self.noise = torch.ones((self.m_dim, self.b_dim)).normal_()
 
-        layers = [nn.Linear(self.b_dim, self.h_dim, bias=True), nn.ReLU()]
+        layers = [nn.Linear(self.b_dim, self.h_dim, bias=True),
+                nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
-            layers.extend([nn.Linear(self.h_dim, self.h_dim, bias=True), nn.ReLU()])
+            layers.extend([nn.Linear(self.h_dim, self.h_dim,
+                bias=True), nn.ReLU()])
 
         self.net = nn.Sequential(*layers)
 
@@ -195,7 +197,6 @@ class BranchIndDeepGammaEncoder(nn.Module):
         self.net_rate = nn.Sequential(
             nn.Linear(self.h_dim, self.b_dim),
             nn.Softplus()) 
-#             nn.Sigmoid())
 
         # Prior distribution
         self.b_dist_p = Gamma(self.prior_alpha, self.prior_rate)
@@ -235,6 +236,3 @@ class BranchIndDeepGammaEncoder(nn.Module):
 #         print(b_kl)
 
         return samples, b_kl
-
-
-

@@ -44,6 +44,7 @@ def evolve_seqs_full_homogeneity(
             parameters.update(mu=rs)
 
         if state_freqs is not None:
+            # A C G T
             fs = state_freqs
             if isinstance(state_freqs, float):
                 fs = [state_freqs]*4

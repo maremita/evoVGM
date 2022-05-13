@@ -152,8 +152,8 @@ class XGTRProbDecoder(nn.Module):
         else:
             try:
                 # Compte the likelihood of each nucleotide of a site
-                log_p_x_a = Multinomial(1, probs=x_gen).log_prob(x).mean(dim=0).view(-1, 1)    #####
-#                 log_p_x_a = Multinomial(1, probs=x_gen).log_prob(x).sum(dim=1).view(-1, 1)  #####$
+                #log_p_x_a = Multinomial(1, probs=x_gen).log_prob(x).mean(dim=0).view(-1, 1)    #####
+                log_p_x_a = Multinomial(1, probs=x_gen).log_prob(x).sum(dim=1).view(-1, 1)  #####$
 #                 log_p_x_a = Multinomial(1, probs=x_gen).log_prob(x) #.view(-1, 1)  # .mean(dim=0)
 #                 ll = - self.bce_loss(x_gen, x).mean(-1).mean(dim=0).view(-1, 1)
 
@@ -163,20 +163,17 @@ class XGTRProbDecoder(nn.Module):
 
             except Exception as e:
                 print(e)
-
                 log_p_x_a = -46
 #                 ll = None
 #                 raise
 
 #         ll = (log_pi_a + log_p_x_a).mean(0)  #####$
-#         ll = (log_p_x_a).mean(0)
+        ll = (log_p_x_a).mean(0)
 #         ll = log_pi_x + log_p_x_a
-        ll = log_p_x_a
+        #ll = log_p_x_a
 
 #         print("\nll")
 #         print("ll shape {}".format(ll.shape)) # [m_dim, 1]
 #         print(ll)
 
         return x_gen, ll
-
-
