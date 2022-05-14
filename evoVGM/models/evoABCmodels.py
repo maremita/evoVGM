@@ -11,11 +11,10 @@ __author__ = "amine remita"
 
 class BaseEvoVGM(ABC):
 
-    def generate(
-            self, 
+    def generate(self, 
             sites,
             site_counts,
-            latent_sample_size=1, 
+            latent_sample_size=1,
             sample_temp=0.1,
             alpha_kl=0.001):
 
@@ -27,16 +26,15 @@ class BaseEvoVGM(ABC):
             return self(
                     sites,
                     site_counts,
-                    latent_sample_size,
-                    sample_temp, 
+                    latent_sample_size=latent_sample_size,
+                    sample_temp=sample_temp, 
                     alpha_kl=alpha_kl, 
                     shuffle_sites=False)
 
-    def fit(
-            self,
+    def fit(self,
             X_train,
             X_train_counts,
-            L,
+            latent_sample_size=1,
             sample_temp=0.1,
             alpha_kl=0.001,
             max_iter=100,
@@ -78,10 +76,11 @@ class BaseEvoVGM(ABC):
                 fit_dict = self(
                         X_train,
                         X_train_counts,
-                        L,
-                        sample_temp,
-                        alpha_kl)
- 
+                        latent_sample_size=latent_sample_size,
+                        sample_temp=sample_temp,
+                        alpha_kl=alpha_kl,
+                        shuffle_sites=True)
+
                 elbos = fit_dict["elbo"]
                 lls = fit_dict["logl"]
                 kls = fit_dict["kl_qprior"]
@@ -103,9 +102,9 @@ class BaseEvoVGM(ABC):
                         val_dict = self.generate(
                                 X_val,
                                 X_val_counts, 
-                                L,
-                                sample_temp,
-                                alpha_kl)
+                                latent_sample_size=latent_sample_size,
+                                sample_temp=sample_temp,
+                                alpha_kl=alpha_kl)
 
                         elbos_val = val_dict["elbo"]
                         lls_val = val_dict["logl"]

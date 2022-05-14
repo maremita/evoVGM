@@ -41,11 +41,12 @@ __author__ = "amine remita"
 def eval_evomodel(EvoModel, m_args, in_args):
     # Instanciate the model
     e = EvoModel(**m_args).to(m_args["device"])
- 
-    e.fit(in_args["X"], in_args["X_counts"],
-            in_args["nb_samples"],
-            in_args["sample_temp"], 
-            in_args["alpha_kl"], 
+
+    e.fit(in_args["X"],
+            in_args["X_counts"],
+            latent_sample_size=in_args["nb_samples"],
+            sample_temp=in_args["sample_temp"], 
+            alpha_kl=in_args["alpha_kl"], 
             max_iter=in_args["n_epochs"],
             optim=in_args["optim"], 
             optim_learning_rate=in_args["learning_rate"],
@@ -54,15 +55,28 @@ def eval_evomodel(EvoModel, m_args, in_args):
             X_val_counts=in_args["X_val_counts"],
             verbose=False)
 
-    return_list = [e.elbos_list, e.lls_list, e.kls_list]
+    fit_hist = [e.elbos_list, e.lls_list, e.kls_list]
     if in_args["X_val"] is not None:
-        return_list.extend([
+        fit_hist.extend([
             e.elbos_val_list,
             e.lls_val_list,
             e.kls_val_list])
 
-    return_list = np.array(return_list)
-    return return_list
+    fit_hist = np.array(fit_hist)
+
+    val_results = e.generate(
+            in_args["X_val"],
+            in_args["X_val_counts"],
+            latent_sample_size=in_args["nb_samples"],
+            sample_temp=in_args["sample_temp"], 
+            alpha_kl=in_args["alpha_kl"])
+
+    overall = dict(
+        fit_hist=fit_hist,
+        val_results=val_results)
+
+    return overall
+
 
 if __name__ == "__main__":
 
@@ -166,11 +180,11 @@ if __name__ == "__main__":
 
     ## Load results
     ## ############
-    scores_file = output_path+"/scores.pkl"
+    scores_file = output_path+"/{}_results.pkl".format(job_name)
 
     if os.path.isfile(scores_file) and scores_from_file:
         if verbose: print("\nLoading scores from file")
-        the_scores = load(scores_file)
+        rep_results = load(scores_file)
 
     ## Execute the evaluation
     ## ######################
@@ -181,9 +195,9 @@ if __name__ == "__main__":
         ## ################
         # Evolve sequences
         # training sequences
-        x_fasta_file = output_path+"/train.fasta"
+        x_fasta_file = output_path+"/{}_train.fasta".format(job_name)
         # validation sequences
-        v_fasta_file = output_path+"/valid.fasta"
+        v_fasta_file = output_path+"/{}_valid.fasta".format(job_name)
 
         if os.path.isfile(x_fasta_file) and\
                 os.path.isfile(v_fasta_file) and from_fasta:
@@ -293,36 +307,42 @@ if __name__ == "__main__":
         parallel = Parallel(n_jobs=nb_replicates, 
                 prefer="processes", verbose=verbose)
 
-        scores = parallel(delayed(eval_evomodel)(EvoModelClass,
+        rep_results = parallel(delayed(eval_evomodel)(EvoModelClass,
             model_args, input_args) for s in range(nb_replicates))
 
-        # get min number of epoch of all reps 
-        # (maybe some reps stopped before max_iter)
-        # to slice the list of epochs with the same length 
-        # and be able to cast the list in ndarray        
-        min_iter = scores[0].shape[1]
-        for score in scores:
-            if min_iter >= score.shape[1]: min_iter = score.shape[1]
-        the_scores = []
-        for score in scores:
-            the_scores.append(score[:,:min_iter])
+        dump(rep_results, scores_file)
 
-        the_scores = np.array(the_scores)
-        dump(the_scores, scores_file)
-        #print(the_scores)
+    #scores = rep_results["fit_hist"]
+    scores = [result["fit_hist"] for result in rep_results]
+
+    # get min number of epoch of all reps 
+    # (maybe some reps stopped before max_iter)
+    # to slice the list of epochs with the same length 
+    # and be able to cast the list in ndarray        
+    min_iter = scores[0].shape[1]
+    for score in scores:
+        if min_iter >= score.shape[1]: min_iter = score.shape[1]
+    the_scores = []
+    for score in scores:
+        the_scores.append(score[:,:min_iter])
+
+    the_scores = np.array(the_scores)
+    #print(the_scores)
 
     ## Ploting results
     ## ###############
     title = output_path
 
     if verbose: print("\nPlotting..")
-    plt_elbo_ll_kl_rep_figure(the_scores, output_path+"/rep_fig",
+    plt_elbo_ll_kl_rep_figure(
+            the_scores,
+            output_path+"/{}_rep_fig".format(job_name),
             print_xtick_every=print_xtick_every,
             usetex=plt_usetex,
             y_limits=str2floats(y_limits),
             title=title,
             plot_validation=True)
 
-    conf_file = output_path+"/conf.ini"
+    conf_file = output_path+"/{}_conf.ini".format(job_name)
     if not os.path.isfile(conf_file):
         write_conf_packages(config, conf_file)
