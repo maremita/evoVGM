@@ -57,7 +57,7 @@ class BaseEvoVGM(ABC):
                     weight_decay=optim_weight_decay)
 
         start = time.time()
-        N_dim = X_train_counts.sum()
+        #N_dim = X_train_counts.sum()
 
         if X_val_counts is not None: N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
@@ -75,19 +75,24 @@ class BaseEvoVGM(ABC):
 
             optimizer.zero_grad()
             try:
-                elbos, lls, kls, _, _, _, _, _ = self(
+                fit_dict = self(
                         X_train,
                         X_train_counts,
                         L,
                         sample_temp,
                         alpha_kl)
+ 
+                elbos = fit_dict["elbo"]
+                lls = fit_dict["logl"]
+                kls = fit_dict["kl_qprior"]
 
                 loss = - elbos
                 loss.backward()
                 optimizer.step()
             # Catch some exception (Working on it)
             except Exception as e:
-                print("\nStopping training at epoch {} because of an exception in fit()".format(epoch))
+                print("\nStopping training at epoch {} because"\
+                        " of an exception in fit()".format(epoch))
                 print(e)
                 break
 
@@ -95,27 +100,37 @@ class BaseEvoVGM(ABC):
             with torch.no_grad():
                 if X_val is not None:
                     try:
-                        elbos_val, lls_val, kls_val, _, _, _, _, _ =\
-                                self.generate(
-                                        X_val,
-                                        X_val_counts, 
-                                        L, sample_temp,
-                                        alpha_kl)
+                        val_dict = self.generate(
+                                X_val,
+                                X_val_counts, 
+                                L,
+                                sample_temp,
+                                alpha_kl)
+
+                        elbos_val = val_dict["elbo"]
+                        lls_val = val_dict["logl"]
+                        kls_val = val_dict["kl_qprior"]
+
                     except Exception as e:
-                        print("\nStopping training at epoch {} because of an exception in generate()".format(epoch))
+                        print("\nStopping training at epoch {}"\
+                                " because of an exception in"\
+                                " generate()".format(epoch))
                         print(e)
                         break
 
                 if verbose:
                     if epoch % 10 == 0 or epoch <= 10:
-                        chaine = "{}\t Train Epoch: {} \t ELBO: {:.3f}\t Lls {:.3f}\t KLs "\
-                                "{:.3f}".format(timeSince(start), epoch, elbos.item()/N_dim, 
-                                        lls.item()/N_dim, kls.item()/N_dim)
+                        chaine = "{}\t Train Epoch: {} \t"\
+                                " ELBO: {:.3f}\t Lls {:.3f}\t KLs "\
+                                "{:.3f}".format(timeSince(start),
+                                        epoch, elbos.item(), 
+                                        lls.item(), kls.item())
                         if X_val is not None:
-                            chaine += "\n{} \t ELBO_Val: {:.3f}\t Lls_Val {:.3f}\t KLs "\
-                                    "{:.3f}".format(elbos_val.item()/N_val_dim, 
-                                            lls_val.item()/N_val_dim, 
-                                            kls_val.item()/N_val_dim)
+                            chaine += "\n{} \t ELBO_Val: {:.3f}\t"\
+                                    " Lls_Val {:.3f}\t KLs "\
+                                    "{:.3f}".format(elbos_val.item(),
+                                            lls_val.item(), 
+                                            kls_val.item())
                         print(chaine, end="\r")
 
                 # Add measure values to lists if all is alright

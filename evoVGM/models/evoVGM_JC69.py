@@ -1,7 +1,5 @@
 from evoVGM.models import AncestorDeepCatEncoder
 from evoVGM.models import BranchIndDeepGammaEncoder
-from evoVGM.models import GTRSubRateIndDeepDirEncoder
-from evoVGM.models import GTRfreqIndDeepDirEncoder
 from evoVGM.models import XProbDecoder
 
 from evoVGM.utils import timeSince
@@ -16,7 +14,7 @@ import torch.nn as nn
 __author__ = "amine remita"
 
 
-class EvoVGM_GTR(nn.Module, BaseEvoVGM):
+class EvoVGM_JC69(nn.Module, BaseEvoVGM):
     def __init__(self, 
                  x_dim,
                  a_dim,
@@ -25,8 +23,6 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                  nb_layers=3,
                  ancestor_prior=torch.ones(4)/4,
                  branch_prior=torch.tensor([0.1, 0.1]),
-                 rates_prior=torch.ones(6),
-                 freqs_prior=torch.ones(4),
                  device=torch.device("cpu")):
 
         super().__init__()
@@ -39,10 +35,11 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         # hyper priors
         self.ancestor_prior = ancestor_prior
         self.branch_prior = branch_prior
-        self.rates_prior =  rates_prior
-        self.freqs_prior =  freqs_prior
         #
         self.device = device
+
+        self.rates = (torch.ones(6)/6).reshape(1, -1)
+        self.freqs = (torch.ones(4)/4).reshape(1, -1)
 
         # Ancestor encoder
         self.ancestEncoder = AncestorDeepCatEncoder(
@@ -59,22 +56,6 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                 self.h_dim,
                 n_layers=self.nb_layers,
                 b_prior=self.branch_prior,
-                device=self.device)
-
-        # GTR Substitution Rate Encoder
-        self.gtrSubEncoder = GTRSubRateIndDeepDirEncoder(
-                self.m_dim,
-                self.h_dim, 
-                n_layers=self.nb_layers,
-                rates_prior=self.rates_prior,
-                device=self.device)
-    
-        # GTR stationary frequencies Encoder
-        self.gtrFreqEncoder = GTRfreqIndDeepDirEncoder(
-                self.m_dim,
-                self.h_dim,
-                n_layers=self.nb_layers, 
-                freqs_prior=self.freqs_prior,
                 device=self.device)
 
         # decoder
@@ -96,8 +77,6 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
 
         ancestors = torch.tensor([]).to(self.device).detach()
         branches = torch.tensor([]).to(self.device).detach()
-        gtrrates = torch.tensor([]).to(self.device).detach()
-        gtrfreqs = torch.tensor([]).to(self.device).detach()
         x_recons = torch.tensor([]).to(self.device).detach()
 
         alpha_kl = torch.tensor(alpha_kl).to(self.device)
@@ -118,30 +97,17 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         #print(b_kl_ws.shape) # [m_dim, 1]
         #print(b_kl_ws)
 
-        # Sample Substitution rates
-        r_ws, r_kl_ws = self.gtrSubEncoder(latent_sample_size)
-        #print("r_kl_ws")
-        #print(r_kl_ws.shape) # [m_dim, 1]
-        #print(r_kl_ws)
-
-        # Sample Stationary frequencies
-        f_ws, f_kl_ws = self.gtrFreqEncoder(latent_sample_size)
-        #print("f_kl_ws")
-        #print(f_kl_ws.shape) # [m_dim, 1]
-        #print(f_kl_ws)
-
-        kl_qprior = N * (b_kl_ws.sum() + r_kl_ws + f_kl_ws)
+        kl_qprior = N * (b_kl_ws.sum(0))
         #print("kl_qprior")
         #print(kl_qprior.shape) # [1]
         #print(kl_qprior)
 
         # Compute the transition probabilities matrices
-        tm = self.decoder.compute_transition_matrix(b_ws, r_ws, f_ws)
+        tm = self.decoder.compute_transition_matrix(b_ws, 
+                self.rates, self.freqs)
  
         with torch.no_grad():
             branches = b_ws.mean(0, keepdim=True)
-            gtrrates = r_ws.mean(0, keepdim=True)
-            gtrfreqs = f_ws.mean(0, keepdim=True)
 
         # shuffling indices
         indices = [i for i in range(sites_size)]
@@ -160,7 +126,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
 
             # ANCESTOR Encoder 
             # ################
-            #a_n, a_kl_n = self.ancestEncoder(x_n, latent_sample_size)
+            #a_n, a_kl_n =self.ancestEncoder(x_n, latent_sample_size)
             a_n, a_kl_n = self.ancestEncoder(x_n, latent_sample_size,
                     a_sample_temp=sample_temp)
             #a_n, a_kl_n = self.ancestEncoder(latent_sample_size)
@@ -170,7 +136,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
             # X decoder and Log likelihood
             # ############################
             x_recons_n, loglx_n = self.decoder(a_n, x_n_expanded,
-                    tm, f_ws)
+                    tm, self.freqs)
             #print("loglx_n.shape {} ".format(loglx_n.shape))
             # [m_dim, 1]
             #print(loglx_n)
@@ -187,7 +153,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         #print("logl")
         #print(logl.shape) # [1]
         #print(logl)
-        
+ 
         #print("kl_qprior")
         #print(kl_qprior.shape) # [1]
         #print(kl_qprior)
@@ -207,8 +173,6 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                 kl_qprior=kl_qprior,
                 a=ancestors,
                 b=branches,
-                r=gtrrates,
-                f=gtrfreqs,
                 x=x_recons)
 
         return ret_values

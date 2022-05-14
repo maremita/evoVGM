@@ -4,14 +4,16 @@ from evoVGM.simulations import evolve_seqs_full_homogeneity as evolve_sequences
 from evoVGM.simulations import build_star_tree
 from evoVGM.data import build_msa_categorical
 from evoVGM.utils import timeSince
-from evoVGM.utils import get_categorical_prior, get_branch_prior 
+from evoVGM.utils import get_categorical_prior 
+from evoVGM.utils import get_branch_prior 
+from evoVGM.utils import get_kappa_prior 
 from evoVGM.utils import str2floats, fasta_to_list
 from evoVGM.utils import str_to_values
 from evoVGM.utils import write_conf_packages
 from evoVGM.reports import plt_elbo_ll_kl_rep_figure
 
-#from evoVGM.models import EvoVGM_JC69
-#from evoVGM.models import EvoVGM_K80
+from evoVGM.models import EvoVGM_JC69
+from evoVGM.models import EvoVGM_K80
 from evoVGM.models import EvoVGM_GTR 
 
 import sys
@@ -105,9 +107,6 @@ if __name__ == "__main__":
 
     # Evo variational model type
     evomodel_type = config.get("subvmodel", "evomodel")
-    # qmodel and qparams arguments are for evosub models
-    #qmodel = config.get("subvmodel", "qmodel", fallback="HKY")
-    #qparams_str = config.get("subvmodel", "qparams", fallback="2.0")
 
     # Hyper parameters
     nb_replicates = config.getint("hperparams", "nb_replicates") 
@@ -118,24 +117,31 @@ if __name__ == "__main__":
     alpha_kl = config.getfloat("hperparams", "alpha_kl")
     n_epochs = config.getint("hperparams", "n_epochs")
     learning_rate = config.getfloat("hperparams", "learning_rate")
-    weight_decay = config.getfloat("hperparams", "optim_weight_decay")
+    weight_decay = config.getfloat("hperparams",
+            "optim_weight_decay")
 
     # priors values
-    ancestor_prior_conf = config.get("priors", "ancestor_prior")
-    branch_prior_conf = config.get("priors", "branch_prior") 
-    rates_prior_conf = config.get("priors", "rates_prior")
-    freqs_prior_conf = config.get("priors", "freqs_prior")
+    ancestor_prior_conf = config.get("priors", "ancestor_prior", 
+            fallback="uniform")
+    branch_prior_conf = config.get("priors", "branch_prior", 
+            fallback="0.1,0.1")
+    kappa_prior_conf = config.get("priors", "kappa_prior", 
+            fallback="1.,1.")
+    rates_prior_conf = config.get("priors", "rates_prior",
+            fallback="uniform")
+    freqs_prior_conf = config.get("priors", "freqs_prior",
+            fallback="uniform")
 
     # plotting settings
     plt_usetex = config.getboolean("plotting", "plt_usetex",
             fallback=False)
     y_limits = config.get("plotting", "y_limits")
-    print_xtick_every = config.getint("plotting", "print_xtick_every",
-            fallback=10)
+    print_xtick_every = config.getint("plotting",
+            "print_xtick_every", fallback=10)
 
     if evomodel_type not in ["jc69", "k80", "gtr"]:
-        print("evomodel_type should be jc69, k80 or gtr, not {}".format(
-            evomodel_type), file=sys.stderr)
+        print("evomodel_type should be jc69, k80 or gtr,"\
+                " not {}".format(evomodel_type), file=sys.stderr)
         sys.exit()
 
     # Computing device setting
@@ -213,7 +219,8 @@ if __name__ == "__main__":
         X, X_counts = X.unique(dim=0, return_counts=True)
 
         # Transform validation sequences
-        # No need to get unique sites. Validation need only forward pass and it's fast.
+        # No need to get unique sites.
+        # Validation need only forward pass and it's fast.
         v_motifs_cats = build_msa_categorical(v_sequences)
         V = torch.from_numpy(v_motifs_cats.data).to(device)
         V_counts = None 
@@ -227,7 +234,8 @@ if __name__ == "__main__":
 
         ancestor_prior = get_categorical_prior(ancestor_prior_conf,
                 "ancestor", verbose=verbose)
-        branch_prior = get_branch_prior(branch_prior_conf, verbose=verbose)
+        branch_prior = get_branch_prior(branch_prior_conf,
+                verbose=verbose)
 
         if evomodel_type == "gtr":
             # Get rate and freq priors if the model is EvoGTRNVMSA_KL
@@ -235,9 +243,10 @@ if __name__ == "__main__":
                     "rates", verbose=verbose)
             freqs_prior = get_categorical_prior(freqs_prior_conf,
                     "freqs", verbose=verbose)
-        #elif evomodel_type == "jc69":
-            #qparams = str2floats(qparams_str, ",")
-            #if len(qparams) == 1 : qparams = qparams[0]
+        
+        elif evomodel_type == "k80":
+            kappa_prior = get_kappa_prior(kappa_prior_conf, 
+                    verbose=verbose)
 
         ## Evo model type
         ## ##############
@@ -264,8 +273,8 @@ if __name__ == "__main__":
             model_args["rates_prior"] = rates_prior
             model_args["freqs_prior"] = freqs_prior
 
-        #elif evomodel_type == "jc69":
-        #    model_args["subModel"] = (qmodel, qparams)
+        elif evomodel_type == "k80":
+            model_args["kappa_prior"] = kappa_prior
 
         input_args = {
                 "X":X,

@@ -8,7 +8,7 @@ from torch.distributions.multinomial import Multinomial
 __author__ = "amine remita"
 
 
-class XGTRProbDecoder(nn.Module):
+class XProbDecoder(nn.Module):
 
     def __init__(self,
             device=torch.device("cpu")):
@@ -16,7 +16,7 @@ class XGTRProbDecoder(nn.Module):
 
         self.device = device
 
-    def buildGTRmatrix(self, rates, pden):
+    def buildmatrix(self, rates, pden):
     # Adpated from https://github.com/zcrabbit/vbpi-nf/blob/main/code/rateMatrix.py#L50
 
         sample_size = rates.shape[0]
@@ -51,39 +51,39 @@ class XGTRProbDecoder(nn.Module):
 #         print(beta.shape) #[sample_size]
 #         print(beta)
 
-        rate_matrix_GTR = torch.zeros((sample_size, 4, 4)).to(self.device)
+        rate_matrix = torch.zeros((sample_size, 4, 4)).to(self.device)
 
         for i in range(4):
             for j in range(4):
                 if j!=i:
-#                     rate_matrix_GTR[:,:, i,j] = pden[j]
-                    rate_matrix_GTR[..., i,j] = pden[...,j]
+#                     rate_matrix[:,:, i,j] = pden[j]
+                    rate_matrix[..., i,j] = pden[...,j]
                     if i+j == 1:
-                        rate_matrix_GTR[..., i,j] *= AG
+                        rate_matrix[..., i,j] *= AG
                     if i+j == 2:
-                        rate_matrix_GTR[..., i,j] *= AC
+                        rate_matrix[..., i,j] *= AC
                     if i+j == 3 and abs(i-j) > 1:
-                        rate_matrix_GTR[..., i,j] *= AT
+                        rate_matrix[..., i,j] *= AT
                     if i+j == 3 and abs(i-j) == 1:
-                        rate_matrix_GTR[..., i,j] *= GC
+                        rate_matrix[..., i,j] *= GC
                     if i+j == 4:
-                        rate_matrix_GTR[..., i,j] *= GT
+                        rate_matrix[..., i,j] *= GT
                     if i+j == 5:
-                        rate_matrix_GTR[..., i,j] *= CT
+                        rate_matrix[..., i,j] *= CT
 
         for i in range(4):
-            rate_matrix_GTR[..., i,i] = - rate_matrix_GTR.sum(dim=-1)[..., i]
+            rate_matrix[..., i,i] = - rate_matrix.sum(dim=-1)[..., i]
 
-#         print("\nrate_matrix_GTR")
-#         print(rate_matrix_GTR.shape) # [sample_size, x_dim, x_dim]
-#         print(rate_matrix_GTR)
+#         print("\nrate_matrix")
+#         print(rate_matrix.shape) # [sample_size, x_dim, x_dim]
+#         print(rate_matrix)
 
-        rate_matrix_GTR = torch.einsum("b,bij->bij", (beta, rate_matrix_GTR))
-#         print("\nrate_matrix_GTR * beta")
-#         print(rate_matrix_GTR.shape) # [sample_size, x_dim, x_dim]
-#         print(rate_matrix_GTR)
+        rate_matrix = torch.einsum("b,bij->bij", (beta, rate_matrix))
+#         print("\nrate_matrix * beta")
+#         print(rate_matrix.shape) # [sample_size, x_dim, x_dim]
+#         print(rate_matrix)
 
-        return rate_matrix_GTR
+        return rate_matrix
 
     def compute_transition_matrix(self, t, r, pi):
 
@@ -91,7 +91,7 @@ class XGTRProbDecoder(nn.Module):
 #         print(t.shape) # [sample_size, m_dim, b_dim]
 #         print(t)
 
-        rateM = self.buildGTRmatrix(r, pi)
+        rateM = self.buildmatrix(r, pi)
 
 #         print("rateM")
 #         print(rateM.shape) # [sample_size, x_dim, x_dim]
@@ -177,3 +177,17 @@ class XGTRProbDecoder(nn.Module):
 #         print(ll)
 
         return x_gen, ll
+
+    def compute_rates_kappa(self, kappa):
+        """
+        "AG", "AC", "AT", "GC", "GT", "CT"
+        Multiply AG and CT transition rates by kappa
+        """
+        nb_sample = kappa.shape[0]
+
+        rates = torch.hstack((
+            kappa*1/6, 
+            (torch.ones(4)/6).expand(nb_sample, -1), 
+            kappa*1/6))
+
+        return rates/rates.sum(1, keepdim=True)

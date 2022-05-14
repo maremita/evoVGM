@@ -53,11 +53,20 @@ def get_branch_prior(conf, verbose=False):
     
     return priors 
 
+def get_kappa_prior(conf, verbose=False):
+    priors = str2float_tensor(conf, ",", 2, "kappa")
+
+    if verbose:
+        print("Kappa priors: {}".format(priors))
+    
+    return priors 
+
 def str2float_tensor(chaine, sep, nb_values, prior_type):
     values = [float(v) for v in chaine.strip().split(sep)]
     if len(values) != nb_values:
         raise ValueError(
-                "the Number of prior values for {} is not correct".format(prior_type))
+                "the Number of prior values for {} "\
+                        "is not correct".format(prior_type))
     return torch.FloatTensor(values)
 
 def str2ints(chaine, sep=","):

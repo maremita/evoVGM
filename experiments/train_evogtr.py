@@ -118,36 +118,14 @@ evoModel = EvoVGM_GTR(x_dim, a_dim, h_dim, m_dim,
         freqs_prior=freqs_prior,
         device=device).to(device)
 
-#print("\nancestor encoder device is {}\n".format(evoModel.ancestEncoder.encoder[0].weight.type()))
-
-# SGD Optimizer
-if optim == "adam":
-    optimizer = torch.optim.Adam(evoModel.parameters(), 
-            lr=learning_rate, weight_decay=weight_decay)
-else:
-    optimizer = torch.optim.SGD(evoModel.parameters(),
-            lr=learning_rate, weight_decay=weight_decay)
-
-start = time.time()
-n_dim = X_counts.sum()
-
-for epoch in range(1, n_epochs + 1):
-
-    optimizer.zero_grad()
-    try:
-        elbos, lls, kls, ancestors, branches, gtrrates, gtrfreqs, xrecons = evoModel(X, X_counts, nb_samples, sample_temp, alpha_kl)
-        loss = - elbos
-        loss.backward()
-        optimizer.step()
-    except Exception as e:
-        """Stop the training if there is a problem with backward pass"""
-        print("\nStopping training at epoch {}  because of an exception".format(epoch))
-        print(e)
-        break
-
-    # printing
-    with torch.no_grad():
-        if epoch % print_every == 0 or epoch <= 10:
-            print("{}\t Train Epoch: {} \t ELBO: {:.3f}\t Lls {:.3f}\t KLs {:.3f}".format(
-                timeSince(start), epoch, elbos.item()/n_dim, lls.item()/n_dim, kls.item()/n_dim), end="\r")
-
+evoModel.fit(
+        X,
+        X_counts,
+        nb_samples,
+        sample_temp=0.1,
+        alpha_kl=alpha_kl,
+        max_iter=n_epochs,
+        optim=optim,
+        optim_learning_rate=learning_rate,
+        optim_weight_decay=weight_decay,
+        verbose=verbose)
