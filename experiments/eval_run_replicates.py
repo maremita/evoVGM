@@ -12,6 +12,7 @@ from evoVGM.utils import str_to_values
 from evoVGM.utils import write_conf_packages
 from evoVGM.reports import plt_elbo_ll_kl_rep_figure
 
+from evoVGM.models import compute_log_likelihood_data 
 from evoVGM.models import EvoVGM_JC69
 from evoVGM.models import EvoVGM_K80
 from evoVGM.models import EvoVGM_GTR 
@@ -180,11 +181,13 @@ if __name__ == "__main__":
 
     ## Load results
     ## ############
-    scores_file = output_path+"/{}_results.pkl".format(job_name)
+    results_file = output_path+"/{}_results.pkl".format(job_name)
 
-    if os.path.isfile(scores_file) and scores_from_file:
+    if os.path.isfile(results_file) and scores_from_file:
         if verbose: print("\nLoading scores from file")
-        rep_results = load(scores_file)
+        result_data = load(results_file)
+        rep_results=result_data["rep_results"]
+        logl_data=result_data["logl_data"]
 
     ## Execute the evaluation
     ## ######################
@@ -201,8 +204,14 @@ if __name__ == "__main__":
 
         if os.path.isfile(x_fasta_file) and\
                 os.path.isfile(v_fasta_file) and from_fasta:
-            x_sequences = fasta_to_list(x_fasta_file, verbose)
-            v_sequences = fasta_to_list(v_fasta_file, verbose)
+            ax_sequences = fasta_to_list(x_fasta_file, verbose)
+            av_sequences = fasta_to_list(v_fasta_file, verbose)
+
+            x_root = ax_sequences[0]
+            x_sequences = ax_sequences[1:]
+
+            v_root = av_sequences[0]
+            v_sequences = av_sequences[1:]
 
         else: 
             tree=build_star_tree(sim_blengths)
@@ -238,6 +247,21 @@ if __name__ == "__main__":
         v_motifs_cats = build_msa_categorical(v_sequences)
         V = torch.from_numpy(v_motifs_cats.data).to(device)
         V_counts = None 
+ 
+        # Transform Val sequences including ancestral sequence
+        # This will be used to compute the true logl knowing
+        # the true parameters
+        all_val_seqs = [v_root, *v_sequences]
+        av_motifs_cats = build_msa_categorical(all_val_seqs)
+        AV = torch.from_numpy(av_motifs_cats.data)
+        AV, AV_counts = AV.unique(dim=0, return_counts=True)
+
+        logl_data = compute_log_likelihood_data(AV, AV_counts,
+                sim_blengths, sim_rates, sim_freqs)
+
+        if verbose:
+            print("\nLog likelihood of the data {}\n".format(
+                logl_data))
 
         x_dim = 4
         a_dim = 4
@@ -310,9 +334,13 @@ if __name__ == "__main__":
         rep_results = parallel(delayed(eval_evomodel)(EvoModelClass,
             model_args, input_args) for s in range(nb_replicates))
 
-        dump(rep_results, scores_file)
+        #
+        result_data = dict(
+                rep_results=rep_results,
+                logl_data=logl_data
+                )
+        dump(result_data, results_file)
 
-    #scores = rep_results["fit_hist"]
     scores = [result["fit_hist"] for result in rep_results]
 
     # get min number of epoch of all reps 

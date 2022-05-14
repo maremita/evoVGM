@@ -60,7 +60,7 @@ def evolve_seqs_full_homogeneity(
     e = Evolver(partitions=p, tree=tree)
 
     e(seqfile=fasta_file, infofile=False, ratefile=False,
-            seed=seed)
+            write_anc=True, seed=seed)
 
     seqdict = e.get_sequences(anc=return_anc)
 
