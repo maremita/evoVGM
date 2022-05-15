@@ -129,3 +129,5 @@ evoModel.fit(
         optim_learning_rate=learning_rate,
         optim_weight_decay=weight_decay,
         verbose=verbose)
+    
+print("\nFin normale du programme\n")

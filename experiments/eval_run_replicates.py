@@ -374,3 +374,5 @@ if __name__ == "__main__":
     conf_file = output_path+"/{}_conf.ini".format(job_name)
     if not os.path.isfile(conf_file):
         write_conf_packages(config, conf_file)
+
+    print("\nFin normale du programme\n")
