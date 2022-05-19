@@ -7,9 +7,9 @@ import numpy as np
 import logomaker as lm
 import matplotlib.pyplot as plt
 import seaborn as sns
-import matplotlib.cm as cm
 
 from scipy.spatial.distance import pdist
+
 
 __author__ = "amine remita"
 
@@ -41,10 +41,7 @@ def plt_elbo_ll_kl_rep_figure(
 
     ax.set_rasterization_zorder(0)
  
-    elbo_color = "#E9002D" #sharop red
-    #ll_color = "teal"
-    #kl_color = "black"
-    #elbo_color = "#FF1F5B"
+    elbo_color = "#E9002D"  #sharop red
     ll_color =   "#226E9C"  # darker blue
     kl_color =   "#7C1D69"  # pink
 
@@ -154,9 +151,6 @@ def plot_fit_estim_dist(
 
     sizefont = 10
 
-    cmap = cm.get_cmap('tab10')
-    colors = [cmap(j/10) for j in range(0,10)]
-
     f, ax = plt.subplots(figsize=(8, 5))
 
     plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
@@ -171,32 +165,31 @@ def plot_fit_estim_dist(
             "f":"Frequencies",
             "k":"Kappa"}
 
+    colors = { 
+            "b":"#226E9C",
+            "r":"#D12959", 
+            "f":"#40AD5A",
+            "k":"#FFAA00"}
+
     for ind, name in enumerate(scores):
         if name in params:
             estim_scores = scores[name]
             sim_param = sim_params[name].reshape(1,1,-1)
-
             #print(name, estim_scores.shape)
 
             # eucl dist
-            if name == "k":
-                dists = np.divide(estim_scores, sim_param).squeeze()
-                #dists = np.divide(sim_param, estim_scores).squeeze()
-            else:
-                dists = np.linalg.norm(
-                        sim_param - estim_scores, axis=-1)
+            dists = np.linalg.norm(
+                    sim_param - estim_scores, axis=-1)
             #print(name, dists.shape)
 
             m = dists.mean(0)
             s = dists.std(0)
-            ax.plot(x, m, "-", color=colors[ind], label=params[name])
+            ax.plot(x, m, "-", color=colors[name], label=params[name])
 
             ax.fill_between(x, m-s, m+s, 
-                    color=colors[ind],
+                    color=colors[name],
                     alpha=0.2, interpolate=True)
         
-    #ax.set_ylim(y_limits)
-    #ax.set_ylim([None, 0])
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
     ax.set_xlabel("Iterations")
@@ -240,9 +233,6 @@ def plot_fit_estim_corr(
 
     sizefont = 10
 
-    cmap = cm.get_cmap('tab10')
-    colors = [cmap(j/10) for j in range(0,10)]
-
     f, ax = plt.subplots(figsize=(8, 5))
 
     plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
@@ -255,7 +245,13 @@ def plot_fit_estim_corr(
             "b":"Branch lengths",
             "r":"Rates", 
             "f":"Frequencies"}
-    
+ 
+    colors = { 
+            "b":"#226E9C",
+            "r":"#D12959", 
+            "f":"#40AD5A",
+            "k":"#FFAA00"}
+
     # Don't compute correlation if vector has the same values
     skip = []
     for name in sim_params:
@@ -266,7 +262,6 @@ def plot_fit_estim_corr(
         if name in params and name not in skip:
             estim_scores = scores[name]
             sim_param = sim_params[name]
-
             #print(name, estim_scores.shape)
 
             # pearson correlation coefficient
@@ -275,13 +270,12 @@ def plot_fit_estim_corr(
 
             m = corrs.mean(0)
             s = corrs.std(0)
-            ax.plot(x, m, "-", color=colors[ind], label=params[name])
+            ax.plot(x, m, "-", color=colors[name], label=params[name])
 
             ax.fill_between(x, m-s, m+s, 
-                    color=colors[ind],
+                    color=colors[name],
                     alpha=0.2, interpolate=True)
-        
-    #ax.set_ylim([None, None])
+    
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
     ax.set_xlabel("Iterations")
@@ -320,8 +314,6 @@ def aggregate_estimate_values(
 
     estim_shapes = dict()
 
-    #print(estim_reps[0][0][0])
-
     nb_reps = len(rep_results)
     nb_epochs = len(estim_reps[0])
 
@@ -359,8 +351,5 @@ def aggregate_estimate_values(
                     estimates[name][i,j] = estimation
                     #print(name, estimation.shape)
                     #print(name, estimates[name].shape)
-                #break
-            #break
 
-    return estimates
-    
+    return estimates 

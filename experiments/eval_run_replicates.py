@@ -24,7 +24,6 @@ import sys
 import os
 from os import makedirs
 import configparser
-#import random
 import time
 from datetime import datetime
 
@@ -382,19 +381,20 @@ if __name__ == "__main__":
     title = output_path
 
     if verbose: print("\nPlotting..")
-    if True:
-        plt_elbo_ll_kl_rep_figure(
-                the_scores,
-                output_path+"/{}_rep_fig".format(job_name),
-                print_xtick_every=print_xtick_every,
-                usetex=plt_usetex,
-                y_limits=str2floats(y_limits),
-                title=title,
-                plot_validation=True)
+
+    plt_elbo_ll_kl_rep_figure(
+            the_scores,
+            output_path+"/{}_rep_fig".format(job_name),
+            print_xtick_every=print_xtick_every,
+            usetex=plt_usetex,
+            y_limits=str2floats(y_limits),
+            title=title,
+            plot_validation=True)
 
     estimates = aggregate_estimate_values(rep_results,
             "val_hist_estim")
     #return a dictionary of arrays
+
     plot_fit_estim_dist(
             estimates, 
             sim_params,
