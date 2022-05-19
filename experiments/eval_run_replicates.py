@@ -11,6 +11,9 @@ from evoVGM.utils import str2floats, fasta_to_list
 from evoVGM.utils import str_to_values
 from evoVGM.utils import write_conf_packages
 from evoVGM.reports import plt_elbo_ll_kl_rep_figure
+from evoVGM.reports import aggregate_estimate_values
+from evoVGM.reports import plot_fit_estim_dist
+from evoVGM.reports import plot_fit_estim_corr
 
 from evoVGM.models import compute_log_likelihood_data 
 from evoVGM.models import EvoVGM_JC69
@@ -54,6 +57,7 @@ def eval_evomodel(EvoModel, m_args, in_args):
             optim_weight_decay=in_args["weight_decay"], 
             X_val=in_args["X_val"],
             X_val_counts=in_args["X_val_counts"],
+            keep_val_history=True,
             verbose=False)
 
     fit_hist = [e.elbos_list, e.lls_list, e.kls_list]
@@ -64,6 +68,7 @@ def eval_evomodel(EvoModel, m_args, in_args):
             e.kls_val_list])
 
     fit_hist = np.array(fit_hist)
+    val_hist_estim = e.val_estimates
 
     val_results = e.generate(
             in_args["X_val"],
@@ -74,6 +79,7 @@ def eval_evomodel(EvoModel, m_args, in_args):
 
     overall = dict(
         fit_hist=fit_hist,
+        val_hist_estim=val_hist_estim,
         val_results=val_results)
 
     return overall
@@ -174,6 +180,14 @@ if __name__ == "__main__":
         now = datetime.now()
         job_name = now.strftime("%y%m%d%H%M")
 
+
+    sim_params = dict(
+            b=np.array(str2floats(sim_blengths)),
+            r=np.array(sim_rates),
+            f=np.array(sim_freqs),
+            k=np.array([[sim_rates[0]/sim_rates[1]]])
+            )
+
     ## output name file
     ## ################
     output_path = os.path.join(output_path, evomodel_type, job_name)
@@ -182,12 +196,21 @@ if __name__ == "__main__":
     ## Load results
     ## ############
     results_file = output_path+"/{}_results.pkl".format(job_name)
+    # training sequences
+    x_fasta_file = output_path+"/{}_train.fasta".format(job_name)
+    # validation sequences
+    v_fasta_file = output_path+"/{}_valid.fasta".format(job_name)
 
     if os.path.isfile(results_file) and scores_from_file:
         if verbose: print("\nLoading scores from file")
         result_data = load(results_file)
         rep_results=result_data["rep_results"]
         logl_data=result_data["logl_data"]
+
+        # Get validation sequences
+        av_sequences = fasta_to_list(v_fasta_file, verbose)
+        av_motifs_cats = build_msa_categorical(av_sequences)
+        AV = av_motifs_cats.data
 
     ## Execute the evaluation
     ## ######################
@@ -197,10 +220,6 @@ if __name__ == "__main__":
         ## Data preparation
         ## ################
         # Evolve sequences
-        # training sequences
-        x_fasta_file = output_path+"/{}_train.fasta".format(job_name)
-        # validation sequences
-        v_fasta_file = output_path+"/{}_valid.fasta".format(job_name)
 
         if os.path.isfile(x_fasta_file) and\
                 os.path.isfile(v_fasta_file) and from_fasta:
@@ -253,10 +272,11 @@ if __name__ == "__main__":
         # the true parameters
         all_val_seqs = [v_root, *v_sequences]
         av_motifs_cats = build_msa_categorical(all_val_seqs)
-        AV = torch.from_numpy(av_motifs_cats.data)
-        AV, AV_counts = AV.unique(dim=0, return_counts=True)
+        AV = av_motifs_cats.data
+        AV_unique, AV_counts = torch.from_numpy(AV).unique(
+                dim=0, return_counts=True)
 
-        logl_data = compute_log_likelihood_data(AV, AV_counts,
+        logl_data = compute_log_likelihood_data(AV_unique, AV_counts,
                 sim_blengths, sim_rates, sim_freqs)
 
         if verbose:
@@ -339,7 +359,7 @@ if __name__ == "__main__":
                 rep_results=rep_results,
                 logl_data=logl_data
                 )
-        dump(result_data, results_file)
+        dump(result_data, results_file, compress=True)
 
     scores = [result["fit_hist"] for result in rep_results]
 
@@ -362,14 +382,32 @@ if __name__ == "__main__":
     title = output_path
 
     if verbose: print("\nPlotting..")
-    plt_elbo_ll_kl_rep_figure(
-            the_scores,
-            output_path+"/{}_rep_fig".format(job_name),
+    if True:
+        plt_elbo_ll_kl_rep_figure(
+                the_scores,
+                output_path+"/{}_rep_fig".format(job_name),
+                print_xtick_every=print_xtick_every,
+                usetex=plt_usetex,
+                y_limits=str2floats(y_limits),
+                title=title,
+                plot_validation=True)
+
+    estimates = aggregate_estimate_values(rep_results,
+            "val_hist_estim")
+    #return a dictionary of arrays
+    plot_fit_estim_dist(
+            estimates, 
+            sim_params,
+            output_path+"/{}_val_estim_dist".format(job_name),
             print_xtick_every=print_xtick_every,
-            usetex=plt_usetex,
-            y_limits=str2floats(y_limits),
-            title=title,
-            plot_validation=True)
+            usetex=plt_usetex)
+
+    plot_fit_estim_corr(
+            estimates, 
+            sim_params,
+            output_path+"/{}_val_estim_corr".format(job_name),
+            print_xtick_every=print_xtick_every,
+            usetex=plt_usetex)
 
     conf_file = output_path+"/{}_conf.ini".format(job_name)
     if not os.path.isfile(conf_file):

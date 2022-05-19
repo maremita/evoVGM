@@ -6,7 +6,10 @@ import platform
 import importlib
 from pprint import pformat
 
+import numpy as np
 import torch
+from joblib import Parallel, delayed
+from scipy.stats.stats import pearsonr#, spearmanr
 
 __author__ = "amine remita"
 
@@ -122,3 +125,31 @@ def get_modules_versions():
             versions[module_name] = "Not found"
 
     return versions
+
+
+def compute_corr(main, batch, verbose=False):
+
+    def pearson(v1, v2):
+        return pearsonr(v1, v2)[0]
+        #return spearmanr(v1, v2)[0]
+
+    nb_reps, nb_epochs, shape = batch.shape
+
+    parallel = Parallel(prefer="processes", verbose=verbose)
+
+    corrs = np.zeros((nb_reps, nb_epochs))
+
+    for i in range(nb_reps):
+        pears = parallel(delayed(pearson)(main , batch[i, j]) 
+                for j in range(nb_epochs))
+        corrs[i] = np.array(pears)
+
+    return corrs
+
+
+
+
+
+
+
+

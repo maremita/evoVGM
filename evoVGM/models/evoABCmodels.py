@@ -42,7 +42,9 @@ class BaseEvoVGM(ABC):
             optim_learning_rate=0.005, 
             optim_weight_decay=0.1,
             X_val=None,
-            X_val_counts=None, 
+            X_val_counts=None,
+            keep_fit_history=False,
+            keep_val_history=False, 
             verbose=None):
 
         if optim == 'adam':
@@ -63,6 +65,9 @@ class BaseEvoVGM(ABC):
         self.elbos_list = []
         self.lls_list = []
         self.kls_list = []
+
+        if keep_fit_history: self.fit_estimates = []
+        if keep_val_history: self.val_estimates = []
 
         if X_val is not None:
             self.elbos_val_list = []
@@ -136,10 +141,14 @@ class BaseEvoVGM(ABC):
                 self.elbos_list.append(elbos.item())
                 self.lls_list.append(lls.item())
                 self.kls_list.append(kls.item())
+                if keep_fit_history:
+                    self.fit_estimates.append(fit_dict)
                 if X_val is not None:
                     self.elbos_val_list.append(elbos_val.item())
                     self.lls_val_list.append(lls_val.item())
                     self.kls_val_list.append(kls_val.item())
+                    if keep_val_history:
+                        self.val_estimates.append(val_dict)
 
         # convert to ndarray to facilitate post-processing
         with torch.no_grad():

@@ -1,12 +1,15 @@
-#import os.path
+from evoVGM.utils import compute_corr
 
-#import numpy as np
+#import os.path
+import numpy as np
 #import pandas as pd
 
 import logomaker as lm
 import matplotlib.pyplot as plt
 import seaborn as sns
-#import matplotlib.cm as cm
+import matplotlib.cm as cm
+
+from scipy.spatial.distance import pdist
 
 __author__ = "amine remita"
 
@@ -128,3 +131,236 @@ def plt_elbo_ll_kl_rep_figure(
             format=fig_format, dpi=fig_dpi)
 
     plt.close(f)
+
+
+def plot_fit_estim_dist(
+        scores,
+        sim_params,
+        out_file,
+        print_xtick_every=10,
+        usetex=False,
+        y_limits=[-10, 0],
+        title="",
+        ):
+    """
+    scores here is a dictionary of estimate arrays.
+    Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
+    """
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    sizefont = 10
+
+    cmap = cm.get_cmap('tab10')
+    colors = [cmap(j/10) for j in range(0,10)]
+
+    f, ax = plt.subplots(figsize=(8, 5))
+
+    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.16, hspace=0.1)
+
+    nb_iters = scores["b"].shape[1]
+    x = [j for j in range(1, nb_iters+1)]
+
+    params = {
+            "b":"Branch lengths",
+            "r":"Rates", 
+            "f":"Frequencies",
+            "k":"Kappa"}
+
+    for ind, name in enumerate(scores):
+        if name in params:
+            estim_scores = scores[name]
+            sim_param = sim_params[name].reshape(1,1,-1)
+
+            #print(name, estim_scores.shape)
+
+            # eucl dist
+            if name == "k":
+                dists = np.divide(estim_scores, sim_param).squeeze()
+                #dists = np.divide(sim_param, estim_scores).squeeze()
+            else:
+                dists = np.linalg.norm(
+                        sim_param - estim_scores, axis=-1)
+            #print(name, dists.shape)
+
+            m = dists.mean(0)
+            s = dists.std(0)
+            ax.plot(x, m, "-", color=colors[ind], label=params[name])
+
+            ax.fill_between(x, m-s, m+s, 
+                    color=colors[ind],
+                    alpha=0.2, interpolate=True)
+        
+    #ax.set_ylim(y_limits)
+    #ax.set_ylim([None, 0])
+    ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
+            t % print_xtick_every==0])
+    ax.set_xlabel("Iterations")
+    ax.set_ylabel("Euclidean distance")
+    ax.grid()
+
+    handles,labels = [],[]
+    for ax in f.axes:
+        for h,l in zip(*ax.get_legend_handles_labels()):
+            if l not in labels:
+                handles.append(h)
+                labels.append(l)
+    plt.legend(handles, labels, bbox_to_anchor=(1.02, 1), 
+            loc='upper left', borderaxespad=0.)
+    plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+
+def plot_fit_estim_corr(
+        scores,
+        sim_params,
+        out_file,
+        print_xtick_every=10,
+        usetex=False,
+        y_limits=[-10, 0],
+        title="",
+        ):
+    """
+    scores here is a dictionary of estimate arrays.
+    Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
+    """
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    sizefont = 10
+
+    cmap = cm.get_cmap('tab10')
+    colors = [cmap(j/10) for j in range(0,10)]
+
+    f, ax = plt.subplots(figsize=(8, 5))
+
+    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.16, hspace=0.1)
+
+    nb_iters = scores["b"].shape[1]
+    x = [j for j in range(1, nb_iters+1)]
+
+    params = {
+            "b":"Branch lengths",
+            "r":"Rates", 
+            "f":"Frequencies"}
+    
+    # Don't compute correlation if vector has the same values
+    skip = []
+    for name in sim_params:
+        if np.all(sim_params[name]==sim_params[name][0]):
+            skip.append(name)
+
+    for ind, name in enumerate(scores):
+        if name in params and name not in skip:
+            estim_scores = scores[name]
+            sim_param = sim_params[name]
+
+            #print(name, estim_scores.shape)
+
+            # pearson correlation coefficient
+            corrs = compute_corr(sim_param, estim_scores)
+            #print(name, corrs.shape)
+
+            m = corrs.mean(0)
+            s = corrs.std(0)
+            ax.plot(x, m, "-", color=colors[ind], label=params[name])
+
+            ax.fill_between(x, m-s, m+s, 
+                    color=colors[ind],
+                    alpha=0.2, interpolate=True)
+        
+    #ax.set_ylim([None, None])
+    ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
+            t % print_xtick_every==0])
+    ax.set_xlabel("Iterations")
+    ax.set_ylabel("Correlation coefficient")
+    ax.grid()
+
+    handles,labels = [],[]
+    for ax in f.axes:
+        for h,l in zip(*ax.get_legend_handles_labels()):
+            if l not in labels:
+                handles.append(h)
+                labels.append(l)
+    plt.legend(handles, labels, bbox_to_anchor=(1.01, 1), 
+            loc='upper left', borderaxespad=0.)
+    plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+
+def aggregate_estimate_values(
+        rep_results,
+        key, #val_hist_estim
+        ):
+
+    #return a dictionary of arrays
+    estimates = dict()
+
+    # List (nb_reps) of list (nb_epochs) of dictionaries (estimates) 
+    estim_reps = [result[key] for result in rep_results]
+
+    param_names = ["b", "r", "f", "k"]
+    names = param_names+["a", "x"]
+
+    estim_shapes = dict()
+
+    #print(estim_reps[0][0][0])
+
+    nb_reps = len(rep_results)
+    nb_epochs = len(estim_reps[0])
+
+    #print(list(estim_reps[0][0].keys()))
+
+    for name in names:
+        if name in estim_reps[0][0]:
+            #print(name)
+            
+            estim = estim_reps[0][0][name]
+            if name in param_names:
+                shape = list(estim.flatten().shape)
+            else:
+                shape = list(estim.shape)
+            #print(name, shape)
+
+            estim_shapes[name] = shape
+            #print(shape)
+
+            estimates[name] = np.zeros((nb_reps, nb_epochs, *shape))
+            #print(estimates[name].shape)
+
+    for i, replicat in enumerate(estim_reps): # list of reps
+        #print("replicat {}".format(type(replicat)))
+        for j, epoch in enumerate(replicat): # list of epochs
+            #print("epoch {}".format(type(epoch)))
+            for name in names:
+                if name in epoch:
+                    estimation = epoch[name].cpu().detach().numpy()
+
+                    if name in param_names:
+                        #print(name, estimation.shape)
+                        estimation = estimation.flatten()
+
+                    estimates[name][i,j] = estimation
+                    #print(name, estimation.shape)
+                    #print(name, estimates[name].shape)
+                #break
+            #break
+
+    return estimates
+    
