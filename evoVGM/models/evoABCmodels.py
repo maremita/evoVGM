@@ -148,7 +148,11 @@ class BaseEvoVGM(ABC):
                     self.lls_val_list.append(lls_val.item())
                     self.kls_val_list.append(kls_val.item())
                     if keep_val_history:
-                        self.val_estimates.append(val_dict)
+                        val_estim = dict()
+                        for estim in ["b", "r", "f", "k"]:
+                            if estim in val_dict:
+                                val_estim[estim] = val_dict[estim]
+                        self.val_estimates.append(val_estim)
 
         # convert to ndarray to facilitate post-processing
         with torch.no_grad():
