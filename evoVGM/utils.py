@@ -147,9 +147,18 @@ def compute_corr(main, batch, verbose=False):
     return corrs
 
 
+def check_finite_grads(model, epoch, verbose=False):
 
+    finit = True
+    for name, param in model.named_parameters():
+        if not torch.isfinite(param.grad).all():
+            finit = False
 
+            if verbose:
+                print("{} Nonfinit grad {} : {}".format(epoch,
+                    name, param.grad))
+            else:
+                return finit
 
-
-
-
+    if not finit and verbose: print()
+    return finit

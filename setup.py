@@ -14,9 +14,10 @@ setup(
     version=_version,
     description='Evolutionary-based Variational Generative '+\
             'Model using Multiple Sequence Alignments',
-    author='a.r',
+    author='Amine Remita',
     packages=find_packages(),
     scripts=[
+        "experiments/evovgm.py",
         "experiments/train_evogtr.py",
         "experiments/eval_run_replicates.py",
         ],

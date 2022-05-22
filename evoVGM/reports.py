@@ -20,7 +20,7 @@ def plt_elbo_ll_kl_rep_figure(
         print_xtick_every=10,
         usetex=False,
         y_limits=[-10, 0],
-        title="evoModel",
+        title=None,
         plot_validation=False):
 
     fig_format= "png"
@@ -111,6 +111,8 @@ def plt_elbo_ll_kl_rep_figure(
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
     ax.set_xlabel("Iterations")
+    ax.set_ylabel("ELBO and Log Likelihood")
+    ax2.set_ylabel("KL(q|prior)")
     ax.grid()
 
     handles,labels = [],[]
@@ -121,8 +123,9 @@ def plt_elbo_ll_kl_rep_figure(
                 labels.append(l)
     plt.legend(handles, labels, bbox_to_anchor=(1.1, 1), 
             loc='upper left', borderaxespad=0.)
-    plt.suptitle(title)
 
+    if title:
+        plt.suptitle(title)
 
     plt.savefig(fig_file, bbox_inches="tight", 
             format=fig_format, dpi=fig_dpi)
@@ -136,9 +139,8 @@ def plot_fit_estim_dist(
         out_file,
         print_xtick_every=10,
         usetex=False,
-        y_limits=[-10, 0],
-        title="",
-        ):
+        y_limits=[0., None],
+        title=None):
     """
     scores here is a dictionary of estimate arrays.
     Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
@@ -175,7 +177,6 @@ def plot_fit_estim_dist(
         if name in params:
             estim_scores = scores[name]
             sim_param = sim_params[name].reshape(1,1,-1)
-            #print(name, estim_scores.shape)
 
             # eucl dist
             dists = np.linalg.norm(
@@ -192,6 +193,7 @@ def plot_fit_estim_dist(
         
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
+    ax.set_ylim(y_limits)
     ax.set_xlabel("Iterations")
     ax.set_ylabel("Euclidean distance")
     ax.grid()
@@ -204,7 +206,9 @@ def plot_fit_estim_dist(
                 labels.append(l)
     plt.legend(handles, labels, bbox_to_anchor=(1.02, 1), 
             loc='upper left', borderaxespad=0.)
-    plt.suptitle(title)
+
+    if title:
+        plt.suptitle(title)
 
     plt.savefig(fig_file, bbox_inches="tight", 
             format=fig_format, dpi=fig_dpi)
@@ -218,9 +222,8 @@ def plot_fit_estim_corr(
         out_file,
         print_xtick_every=10,
         usetex=False,
-        y_limits=[-10, 0],
-        title="",
-        ):
+        y_limits=[-1., 1.],
+        title=None):
     """
     scores here is a dictionary of estimate arrays.
     Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
@@ -278,6 +281,7 @@ def plot_fit_estim_corr(
     
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
+    ax.set_ylim(y_limits)
     ax.set_xlabel("Iterations")
     ax.set_ylabel("Correlation coefficient")
     ax.grid()
@@ -290,7 +294,9 @@ def plot_fit_estim_corr(
                 labels.append(l)
     plt.legend(handles, labels, bbox_to_anchor=(1.01, 1), 
             loc='upper left', borderaxespad=0.)
-    plt.suptitle(title)
+
+    if title:
+        plt.suptitle(title)
 
     plt.savefig(fig_file, bbox_inches="tight", 
             format=fig_format, dpi=fig_dpi)
@@ -301,6 +307,7 @@ def plot_fit_estim_corr(
 def aggregate_estimate_values(
         rep_results,
         key, #val_hist_estim
+        report_n_epochs=False,
         ):
 
     #return a dictionary of arrays
@@ -315,7 +322,11 @@ def aggregate_estimate_values(
     estim_shapes = dict()
 
     nb_reps = len(rep_results)
-    nb_epochs = len(estim_reps[0])
+
+    if report_n_epochs:
+        nb_epochs = report_n_epochs
+    else:
+        nb_epochs = len(estim_reps[0])
 
     #print(list(estim_reps[0][0].keys()))
 
@@ -338,7 +349,9 @@ def aggregate_estimate_values(
 
     for i, replicat in enumerate(estim_reps): # list of reps
         #print("replicat {}".format(type(replicat)))
-        for j, epoch in enumerate(replicat): # list of epochs
+        #for j, epoch in enumerate(replicat): # list of epochs
+        for j in range(nb_epochs): # list of epochs
+            epoch = replicat[j]
             #print("epoch {}".format(type(epoch)))
             for name in names:
                 if name in epoch:
