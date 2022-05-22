@@ -87,7 +87,8 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
             latent_sample_size=10,
             sample_temp=0.1,
             alpha_kl=0.001,
-            shuffle_sites=True):
+            shuffle_sites=True,
+            keep_vars=False):
 
         sites_size, nb_seqs, feat_size = sites.shape
 
@@ -99,6 +100,13 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         gtrrates = torch.tensor([]).to(self.device).detach()
         gtrfreqs = torch.tensor([]).to(self.device).detach()
         x_recons = torch.tensor([]).to(self.device).detach()
+
+        if keep_vars:
+            ancestors_var = torch.tensor([]).to(self.device).detach()
+            branches_var = torch.tensor([]).to(self.device).detach()
+            gtrrates_var = torch.tensor([]).to(self.device).detach()
+            gtrfreqs_var = torch.tensor([]).to(self.device).detach()
+            x_recons_var = torch.tensor([]).to(self.device).detach()
 
         alpha_kl = torch.tensor(alpha_kl).to(self.device)
 
@@ -143,6 +151,11 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
             gtrrates = r_ws.mean(0, keepdim=True)
             gtrfreqs = f_ws.mean(0, keepdim=True)
 
+            if keep_vars:
+                branches_var = b_ws.var(0, keepdim=True)
+                gtrrates_var = r_ws.var(0, keepdim=True)
+                gtrfreqs_var = f_ws.var(0, keepdim=True)
+
         # shuffling indices
         indices = [i for i in range(sites_size)]
 
@@ -183,6 +196,13 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                 x_recons = torch.cat(
                         [x_recons, x_recons_n.mean(0, keepdim=True)],
                         0)
+                if keep_vars:
+                    ancestors_var = torch.cat(
+                            [ancestors_var,
+                                a_n.var(0, keepdim=True)], 0)
+                    x_recons_var = torch.cat(
+                            [x_recons_var, x_recons_n.var(0,
+                                keepdim=True)], 0)
 
         #print("logl")
         #print(logl.shape) # [1]
@@ -210,5 +230,12 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                 r=gtrrates,
                 f=gtrfreqs,
                 x=x_recons)
+
+        if keep_vars:
+            ret_values["a_var"] = ancestors_var
+            ret_values["b_var"] = branches_var 
+            ret_values["r_var"] = gtrrates_var
+            ret_values["f_var"] = gtrfreqs_var
+            ret_values["x_var"] = x_recons_var
 
         return ret_values

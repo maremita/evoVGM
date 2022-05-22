@@ -17,6 +17,8 @@ from evoVGM.reports import plt_elbo_ll_kl_rep_figure
 from evoVGM.reports import aggregate_estimate_values
 from evoVGM.reports import plot_fit_estim_dist
 from evoVGM.reports import plot_fit_estim_corr
+from evoVGM.reports import aggregate_sampled_estimates
+from evoVGM.reports import report_sampled_estimates
 
 from evoVGM.models import compute_log_likelihood_data 
 from evoVGM.models import EvoVGM_JC69
@@ -86,13 +88,15 @@ def eval_evomodel(EvoModel, m_args, fit_args):
         overall["fit_hist_estim"] = e.fit_estimates
 
     overall["fit_hist"] = np.array(fit_hist)
-
-    overall["val_results"] = e.generate(
+    
+    # the key in oldest versions was "val_results"
+    overall["gen_results"] = e.generate(
             fit_args["X_val"],
             fit_args["X_val_counts"],
             latent_sample_size=fit_args["nb_samples"],
             sample_temp=fit_args["sample_temp"], 
-            alpha_kl=fit_args["alpha_kl"])
+            alpha_kl=fit_args["alpha_kl"],
+            keep_vars=fit_args["keep_gen_vars"])
 
     return overall
 
@@ -135,6 +139,11 @@ if __name__ == "__main__":
         fallback="0.16"), 6, cast=float)
     sim_freqs = str_to_values(config.get("data", "freqs",
         fallback="0.25"), 4, cast=float)
+
+    # The order of freqs is different for evoVGM
+    # A G C T
+    sim_freqs_vgm = [sim_freqs[0], sim_freqs[2],
+            sim_freqs[1], sim_freqs[3]]
 
     # setting parameters
     job_name = config.get("settings", "job_name", fallback=None)
@@ -202,7 +211,7 @@ if __name__ == "__main__":
     sim_params = dict(
             b=np.array(str2floats(sim_blengths)),
             r=np.array(sim_rates),
-            f=np.array(sim_freqs),
+            f=np.array(sim_freqs_vgm),
             k=np.array([[sim_rates[0]/sim_rates[1]]])
             )
 
@@ -326,7 +335,7 @@ if __name__ == "__main__":
                     dim=0, return_counts=True)
 
             logl_data = compute_log_likelihood_data(AV_unique,
-                    AV_counts, sim_blengths, sim_rates, sim_freqs)
+                    AV_counts, sim_blengths, sim_rates, sim_freqs_vgm)
 
             if verbose:
                 print("\nLog likelihood of the data {}\n".format(
@@ -407,6 +416,7 @@ if __name__ == "__main__":
                 "keep_fit_history":keep_fit_history,
                 "keep_val_history":keep_val_history,
                 "val_during_fit":val_during_fit,
+                "keep_gen_vars":True,
                 "verbose":not sim_data
                 }
 
@@ -441,19 +451,30 @@ if __name__ == "__main__":
     the_scores = np.array(the_scores)
     #print("The scores {}".format(the_scores.shape))
 
+
+    ## Generate report file from sampling step
+    ## #######################################
+    if verbose: print("\nGenerate reports..")
+
+    estim_gens = aggregate_sampled_estimates(
+            rep_results, "gen_results")
+
+    report_sampled_estimates(
+            estim_gens,
+            output_path+"/{}_estim_report".format(job_name),
+            )
+
+
     ## Ploting results
     ## ###############
-    title = output_path
-
     if verbose: print("\nPlotting..")
-
     plt_elbo_ll_kl_rep_figure(
             the_scores,
             output_path+"/{}_rep_fig".format(job_name),
             print_xtick_every=print_xtick_every,
             usetex=plt_usetex,
             y_limits=str2floats(y_limits),
-            title=title,
+            title=None,
             plot_validation=val_during_fit)
 
     if val_during_fit:

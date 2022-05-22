@@ -16,7 +16,8 @@ class BaseEvoVGM(ABC):
             site_counts,
             latent_sample_size=1,
             sample_temp=0.1,
-            alpha_kl=0.001):
+            alpha_kl=0.001,
+            keep_vars=False):
 
         with torch.no_grad():
             if site_counts == None:
@@ -29,7 +30,8 @@ class BaseEvoVGM(ABC):
                     latent_sample_size=latent_sample_size,
                     sample_temp=sample_temp, 
                     alpha_kl=alpha_kl, 
-                    shuffle_sites=False)
+                    shuffle_sites=False,
+                    keep_vars=keep_vars)
 
     def fit(self,
             X_train,
@@ -44,7 +46,9 @@ class BaseEvoVGM(ABC):
             X_val=None,
             X_val_counts=None,
             keep_fit_history=False,
-            keep_val_history=False, 
+            keep_val_history=False,
+            keep_fit_vars=False,
+            keep_val_vars=False,
             verbose=None):
 
         if optim == 'adam':
@@ -84,7 +88,8 @@ class BaseEvoVGM(ABC):
                         latent_sample_size=latent_sample_size,
                         sample_temp=sample_temp,
                         alpha_kl=alpha_kl,
-                        shuffle_sites=True)
+                        shuffle_sites=True,
+                        keep_vars=keep_fit_vars)
 
                 elbos = fit_dict["elbo"]
                 lls = fit_dict["logl"]
@@ -109,7 +114,8 @@ class BaseEvoVGM(ABC):
                                 X_val_counts, 
                                 latent_sample_size=latent_sample_size,
                                 sample_temp=sample_temp,
-                                alpha_kl=alpha_kl)
+                                alpha_kl=alpha_kl,
+                                keep_vars=keep_val_vars)
 
                         elbos_val = val_dict["elbo"]
                         lls_val = val_dict["logl"]
@@ -141,12 +147,19 @@ class BaseEvoVGM(ABC):
                 self.elbos_list.append(elbos.item())
                 self.lls_list.append(lls.item())
                 self.kls_list.append(kls.item())
+
                 if keep_fit_history:
-                    self.fit_estimates.append(fit_dict)
+                    fit_estim = dict()
+                    for estim in ["b", "r", "f", "k"]:
+                        if estim in fit_dict:
+                            fit_estim[estim] = fit_dict[estim]
+                    self.fit_estimates.append(fit_estim)
+
                 if X_val is not None:
                     self.elbos_val_list.append(elbos_val.item())
                     self.lls_val_list.append(lls_val.item())
                     self.kls_val_list.append(kls_val.item())
+
                     if keep_val_history:
                         val_estim = dict()
                         for estim in ["b", "r", "f", "k"]:

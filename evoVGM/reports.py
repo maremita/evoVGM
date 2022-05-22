@@ -366,3 +366,138 @@ def aggregate_estimate_values(
                     #print(name, estimates[name].shape)
 
     return estimates 
+
+
+def aggregate_sampled_estimates(
+        rep_results,
+        key):
+
+    param_names = [
+            "b", "b_var",
+            "r", "r_var",
+            "f", "f_var",
+            "k", "k_var"]
+
+    names = param_names + ["a", "a_var", "x", "x_var"]
+
+    estim_reps = [result[key] for result in rep_results]
+
+    estim_shapes = dict()
+    estimates = dict()
+    nb_reps = len(estim_reps)
+
+    for name in names:
+        if name in estim_reps[0]:
+            #print(name)
+            
+            estim = estim_reps[0][name]
+            if name in param_names:
+                shape = list(estim.flatten().shape)
+            else:
+                shape = list(estim.shape)
+            #print(name, shape)
+
+            estim_shapes[name] = shape
+            #print(shape)
+
+            estimates[name] = np.zeros((nb_reps, *shape))
+            #print(estimates[name].shape)
+
+    for i, sampling in enumerate(estim_reps): # list of reps
+        #print("sampling {}".format(type(sampling)))
+        for name in names:
+            if name in sampling:
+                estimation = sampling[name].cpu().detach().numpy()
+
+                if name in param_names:
+                    #print(name, estimation.shape)
+                    estimation = estimation.flatten()
+
+                estimates[name][i] = estimation
+
+    return estimates
+
+
+def report_sampled_estimates(
+        estimates,
+        out_file
+        ):
+
+    param_names = {
+            "b":"Branch lengths",
+            "r":"Substitution rates", 
+            "f":"Relative frequencies",
+            "k":"Kappa"}
+
+    rates = ["AG", "AC", "AT", "GC", "GT", "CT"]
+    freqs = ["A", "G", "C", "T"]
+
+    chaine =  "evoVGM estimations\n"
+    chaine += "##################\n\n"
+
+    for name in param_names:
+        var_flag = False
+        if name in estimates:
+            chaine += param_names[name] + "\n"
+ 
+            m_estimate = estimates[name]
+            param_dim = m_estimate.shape[1]
+
+            means = m_estimate.mean(0)
+            chaine += "  \tMean"
+
+            if name+"_var" in estimates:
+                var_flag = True
+                v_estimate = estimates[name+"_var"]
+                vars_ = v_estimate.mean(0)
+                chaine += "\tVariance"
+            
+            chaine += "\n"
+
+            for dim in range(param_dim):
+                the_name = name + str(dim+1)
+
+                if name == "r":
+                    the_name = rates[dim]
+                elif name == "f":
+                    the_name = freqs[dim]
+
+                chaine += the_name + "\t"
+                chaine += "{:.4f}".format(means[dim].item())
+                if var_flag:
+                    chaine += "\t"+"{:.4f}".format(vars_[dim].item())
+                chaine += "\n"
+
+            chaine += "\n"
+
+    var_flag = False
+    chaine += "Ancestral states\n"
+    m_estimate = estimates["a"]
+    seq_len = m_estimate.shape[1]
+    means = m_estimate.mean(0)
+
+    if "a_var" in estimates:
+        var_flag = True
+        v_estimate = estimates["a_var"]
+        vars_ = v_estimate.mean(0)
+
+    chaine += "pos"
+    for nd in freqs:
+        chaine += "\t"+ nd
+        if var_flag : chaine += "\t"
+
+    chaine += "\n "
+    for nd in freqs:
+        chaine += "\tMean"
+        if var_flag : chaine += "\tVar"
+
+    for i in range(seq_len):
+        chaine += "\n{}".format(i+1)
+        for j in range(4):
+            chaine += "\t{:.4f}".format(means[i,j].item())
+            if var_flag: 
+                chaine += "\t{:.4f}".format(vars_[i,j].item())
+
+    with open(out_file, "w") as fh:
+        fh.write(chaine)
+
