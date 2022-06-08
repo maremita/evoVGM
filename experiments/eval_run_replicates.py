@@ -358,7 +358,7 @@ if __name__ == "__main__":
                 rep_results=rep_results,
                 logl_data=logl_data
                 )
-        dump(result_data, results_file, compress=True)
+        dump(result_data, results_file)
 
     scores = [result["fit_hist"] for result in rep_results]
 

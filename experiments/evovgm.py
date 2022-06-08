@@ -492,6 +492,7 @@ if __name__ == "__main__":
             estimates, 
             sim_params,
             output_path+"/{}_{}_estim_dist".format(job_name, hist),
+            y_limits=[-0.1, 1.1],
             print_xtick_every=print_xtick_every,
             usetex=plt_usetex)
 
@@ -501,6 +502,7 @@ if __name__ == "__main__":
             estimates, 
             sim_params,
             output_path+"/{}_{}_estim_corr".format(job_name, hist),
+            y_limits=[-1.1, 1.1],
             print_xtick_every=print_xtick_every,
             usetex=plt_usetex)
 
