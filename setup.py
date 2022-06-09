@@ -18,7 +18,7 @@ setup(
     packages=find_packages(),
     scripts=[
         "experiments/evovgm.py",
-        "experiments/train_evogtr.py",
+        "experiments/train_evoVGM_GTR.py",
         "experiments/eval_run_replicates.py",
         ],
     install_requires=INSTALL_REQUIRES

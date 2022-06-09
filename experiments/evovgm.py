@@ -42,6 +42,19 @@ from joblib import dump, load
 __author__ = "amine remita"
 
 """
+evovgm.py is the main program that uses the EvoVGM 
+model with different substitution models (JC69, K80 and GTR).
+The model can be trained for nb_replicates times.
+The program can use a sequence alignment from a Fasta file or
+simulate a new sequence alignment using evolutionary parameters
+defined in the config file.
+
+Once the evoVGM package is installed, you can run evovgm.py 
+using this command line:
+
+evovgm.py evovgm_conf_template.ini
+
+where evovgm_conf_template.ini is the config file.
 """
 
 ## Evaluation function

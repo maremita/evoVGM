@@ -18,6 +18,21 @@ import torch
 torch.set_printoptions(precision=4, sci_mode=False)
 
 
+__author__ = "amine remita"
+
+
+"""
+train_evoVGM_GTR.py is an example script that uses 
+the evoVGM package to train a EvoVGM model implemented
+with a GTR substitution model
+Once evoVGM is installed you can run the script with:
+
+train_evoVGM_GTR.py train_evoVGM_GTR.ini
+
+where train_evoVGM_GTR.ini is a config file containing 
+the parameters of the script
+"""
+
 # Get argument values from ini file
 config_file = sys.argv[1]
 config = configparser.ConfigParser(
