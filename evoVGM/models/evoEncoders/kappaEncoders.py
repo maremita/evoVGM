@@ -24,29 +24,31 @@ class KappaIndDeepGammaEncoder(nn.Module):
         self.h_dim = h_dim
         self.k_dim = 1
         self.n_layers = n_layers
-        self.device = device
+        self.device_ = device
 
         # hyper-param for branch mean and sigma LogNormal prior
-        self.prior_alpha, self.prior_rate = k_prior
+        self.prior_alpha, self.prior_rate = k_prior.to(self.device_)
         
-        self.noise = torch.ones((self.k_dim)).uniform_()
-#         self.noise = torch.ones((self.k_dim)).normal_()
+        self.noise = torch.zeros((self.k_dim)).uniform_(
+                ).to(self.device_)
+        #self.noise = torch.zeros((self.k_dim)).normal_(
+        #        ).to(self.device_)
 
-        layers = [nn.Linear(self.k_dim, self.h_dim, bias=True),
-                nn.ReLU()]
+        layers = [nn.Linear(self.k_dim, self.h_dim,
+            bias=True).to(self.device_), nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
-                bias=True), nn.ReLU()])
+                bias=True).to(self.device_), nn.ReLU()])
 
         self.net = nn.Sequential(*layers)
 
         self.net_alpha = nn.Sequential(
-            nn.Linear(self.h_dim, self.k_dim),
+            nn.Linear(self.h_dim, self.k_dim).to(self.device_),
             nn.Softplus()) # Sigmoid,
 
         self.net_rate = nn.Sequential(
-            nn.Linear(self.h_dim, self.k_dim),
+            nn.Linear(self.h_dim, self.k_dim).to(self.device_),
             nn.Softplus()) 
 
         # Prior distribution

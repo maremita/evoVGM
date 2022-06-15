@@ -25,19 +25,20 @@ class AncestorDeepCatEncoder(nn.Module):
         self.h_dim = h_dim
         self.out_dim = out_dim
         self.n_layers = n_layers
-        self.device = device
+        self.device_ = device
 
-        self.pi = ancestor_prior # Hyper-param for character prior
+        # Hyper-param for character prior
+        self.pi = ancestor_prior.to(self.device_) 
 
-        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True),
-                nn.ReLU()]
+        layers = [nn.Linear(self.in_dim, self.h_dim,
+            bias=True).to(self.device_), nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim, 
-                bias=True), nn.ReLU()])
+                bias=True).to(self.device_), nn.ReLU()])
 
-        layers.extend([nn.Linear(self.h_dim, self.out_dim, bias=True),
-            nn.LogSoftmax(-1)])
+        layers.extend([nn.Linear(self.h_dim, self.out_dim,
+            bias=True).to(self.device_), nn.LogSoftmax(-1)])
 
         self.net = nn.Sequential(*layers)
 
@@ -69,7 +70,8 @@ class AncestorDeepCatEncoder(nn.Module):
 
     def sample(self, logits, temperature=1):
         # Reparameterized sampling of discrete distribution
-        U = torch.log(torch.rand(logits.shape) + 1e-20).to(self.device)
+        U = torch.log(torch.rand(logits.shape) + 1e-20).to(
+                self.device_)
 #         print("U shape {}".format(U.shape))
 #         print(U)
         y = logits + U
@@ -92,21 +94,23 @@ class AncestorIndDeepDirEncoder(nn.Module):
         self.a_dim = a_dim
         self.h_dim = h_dim
         self.n_layers = n_layers
-        self.device = device
+        self.device_ = device
 
-        self.pi = ancestor_prior # Hyper-param for character prior
+        # Hyper-param for character prior
+        self.pi = ancestor_prior
 
-        self.noise = torch.ones(self.a_dim).uniform_() # .normal_()
+        self.noise = torch.zeros(self.a_dim).uniform_(
+                ).to(self.device_) # .normal_()
 
-        layers = [nn.Linear(self.a_dim, self.h_dim, bias=True),
-                nn.ReLU()]
+        layers = [nn.Linear(self.a_dim, self.h_dim,
+            bias=True).to(self.device_), nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
-                bias=True), nn.ReLU()])
+                bias=True).to(self.device_), nn.ReLU()])
 
-        layers.extend([nn.Linear(self.h_dim, self.a_dim, bias=True),
-            nn.Softplus()])
+        layers.extend([nn.Linear(self.h_dim, self.a_dim,
+            bias=True).to(self.device_), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
 
@@ -122,8 +126,9 @@ class AncestorIndDeepDirEncoder(nn.Module):
 
         # Sample a
         samples = a_dist_q.rsample(torch.Size([sample_size]))
-# #         print("samples shape {}".format(samples.shape)) # [sample_size, a_dim]
-# #         print(samples)
+        #print("samples shape {}".format(samples.shape))
+        # [sample_size, a_dim]
+        #print(samples)
 
         # KL divergence 
         a_kl = kl_divergence(a_dist_q, self.a_dist_p)
@@ -150,18 +155,20 @@ class AncestorDeepDirEncoder(nn.Module):
         self.h_dim = h_dim
         self.out_dim = out_dim
         self.n_layers = n_layers
-        self.device = device
+        self.device_ = device
 
-        self.pi = ancestor_prior # Hyper-param for character prior
+        self.pi = ancestor_prior.to(self.device_) 
+        # Hyper-param for character prior
 
-        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True), nn.ReLU()]
+        layers = [nn.Linear(self.in_dim, self.h_dim,
+            bias=True).to(self.device_), nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
-                bias=True), nn.ReLU()])
+                bias=True).to(self.device_), nn.ReLU()])
 
         layers.extend([nn.Linear(self.h_dim, self.out_dim,
-            bias=True), nn.Softplus()])
+            bias=True).to(self.device_), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
 
@@ -184,7 +191,8 @@ class AncestorDeepDirEncoder(nn.Module):
 
         # Sample a
         samples = a_dist_q.rsample(torch.Size([sample_size]))
-#         print("\nsamples shape {}".format(samples.shape)) # [sample_size, a_dim]
+#         print("\nsamples shape {}".format(samples.shape))
+        # [sample_size, a_dim]
 #         print(samples)
 
         # KL divergence 
@@ -194,4 +202,3 @@ class AncestorDeepDirEncoder(nn.Module):
 #         print(a_kl)
 
         return samples, a_kl
-
