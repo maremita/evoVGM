@@ -32,14 +32,14 @@ class EvoVGM_JC69(nn.Module, BaseEvoVGM):
         self.h_dim = h_dim
         self.m_dim = m_dim
         self.nb_layers = nb_layers
-        # hyper priors
-        self.ancestor_prior = ancestor_prior
-        self.branch_prior = branch_prior
         #
-        self.device = device
+        self.device_ = device
+        # hyper priors
+        self.ancestor_prior = ancestor_prior.to(self.device_)
+        self.branch_prior = branch_prior.to(self.device_)
 
-        self.rates = (torch.ones(6)/6).reshape(1, -1)
-        self.freqs = (torch.ones(4)/4).reshape(1, -1)
+        self.rates = (torch.ones(6)/6).reshape(1, -1).to(self.device_)
+        self.freqs = (torch.ones(4)/4).reshape(1, -1).to(self.device_)
 
         # Ancestor encoder
         self.ancestEncoder = AncestorDeepCatEncoder(
@@ -48,7 +48,7 @@ class EvoVGM_JC69(nn.Module, BaseEvoVGM):
                 self.a_dim, 
                 n_layers=self.nb_layers, 
                 ancestor_prior=self.ancestor_prior,
-                device=self.device)
+                device=self.device_)
 
         # Branche encoder  
         self.branchEncoder = BranchIndDeepGammaEncoder(
@@ -56,11 +56,10 @@ class EvoVGM_JC69(nn.Module, BaseEvoVGM):
                 self.h_dim,
                 n_layers=self.nb_layers,
                 b_prior=self.branch_prior,
-                device=self.device)
+                device=self.device_)
 
         # decoder
-        self.decoder = XProbDecoder(
-                device=self.device)
+        self.decoder = XProbDecoder(device=self.device_)
 
     def forward(self, 
             sites, 
@@ -76,23 +75,23 @@ class EvoVGM_JC69(nn.Module, BaseEvoVGM):
         assert(self.x_dim == feat_size)
         assert(self.m_dim == nb_seqs)
 
-        ancestors = torch.tensor([]).to(self.device).detach()
-        branches = torch.tensor([]).to(self.device).detach()
-        x_recons = torch.tensor([]).to(self.device).detach()
+        ancestors = torch.tensor([]).to(self.device_).detach()
+        branches = torch.tensor([]).to(self.device_).detach()
+        x_recons = torch.tensor([]).to(self.device_).detach()
 
         if keep_vars:
-            ancestors_var = torch.tensor([]).to(self.device).detach()
-            branches_var = torch.tensor([]).to(self.device).detach()
-            x_recons_var = torch.tensor([]).to(self.device).detach()
+            ancestors_var = torch.tensor([]).to(self.device_).detach()
+            branches_var = torch.tensor([]).to(self.device_).detach()
+            x_recons_var = torch.tensor([]).to(self.device_).detach()
 
-        alpha_kl = torch.tensor(alpha_kl).to(self.device)
+        alpha_kl = torch.tensor(alpha_kl).to(self.device_)
 
         #logl = torch.zeros(self.m_dim, 1).to(
-        #        self.device).detach()
-        logl = torch.zeros(1).to(self.device).detach()
-        a_kl_ws = torch.zeros(1).to(self.device).detach()
-        kl_qprior = torch.zeros(1).to(self.device).detach()
-        elbo = torch.zeros(1).to(self.device)
+        #        self.device_).detach()
+        logl = torch.zeros(1).to(self.device_).detach()
+        a_kl_ws = torch.zeros(1).to(self.device_).detach()
+        kl_qprior = torch.zeros(1).to(self.device_).detach()
+        elbo = torch.zeros(1).to(self.device_)
 
         N = site_counts.sum().detach()
  

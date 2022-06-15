@@ -14,7 +14,7 @@ class XProbDecoder(nn.Module):
             device=torch.device("cpu")):
         super().__init__()
 
-        self.device = device
+        self.device_ = device
 
     def buildmatrix(self, rates, pden):
     # Adpated from https://github.com/zcrabbit/vbpi-nf/blob/main/code/rateMatrix.py#L50
@@ -51,7 +51,8 @@ class XProbDecoder(nn.Module):
 #         print(beta.shape) #[sample_size]
 #         print(beta)
 
-        rate_matrix = torch.zeros((sample_size, 4, 4)).to(self.device)
+        rate_matrix = torch.zeros((sample_size, 4, 4)).to(
+                self.device_)
 
         for i in range(4):
             for j in range(4):
@@ -187,7 +188,7 @@ class XProbDecoder(nn.Module):
 
         rates = torch.hstack((
             kappa*1/6, 
-            (torch.ones(4)/6).expand(nb_sample, -1), 
+            (torch.ones(4)/6).expand(nb_sample, -1).to(self.device_), 
             kappa*1/6))
 
         return rates/rates.sum(1, keepdim=True)

@@ -36,13 +36,13 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         self.h_dim = h_dim
         self.m_dim = m_dim
         self.nb_layers = nb_layers
+        #
         self.device_ = device
         # hyper priors
         self.ancestor_prior = ancestor_prior.to(self.device_)
         self.branch_prior = branch_prior.to(self.device_)
         self.rates_prior =  rates_prior.to(self.device_)
         self.freqs_prior =  freqs_prior.to(self.device_)
-        #
 
         # Ancestor encoder
         self.ancestEncoder = AncestorDeepCatEncoder(
@@ -78,8 +78,7 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
                 device=self.device_)
 
         # decoder
-        self.decoder = XProbDecoder(
-                device=self.device_)
+        self.decoder = XProbDecoder(device=self.device_)
 
     def forward(self, 
             sites, 
