@@ -43,7 +43,7 @@ __author__ = "amine remita"
 ## ###################
 def eval_evomodel(EvoModel, m_args, in_args):
     # Instanciate the model
-    e = EvoModel(**m_args).to(m_args["device"])
+    e = EvoModel(**m_args)
 
     e.fit(in_args["X"],
             in_args["X_counts"],

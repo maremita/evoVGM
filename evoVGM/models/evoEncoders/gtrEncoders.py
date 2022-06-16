@@ -20,13 +20,14 @@ class GTRSubRateIndDirEncoder(nn.Module):
 
         self.m_dim = m_dim
         self.r_dim = 6      # AG, AC, AT, GC, GT, CT 
-        self.device = device
+        self.device_ = device
 
-        self.pr = rates_prior # Hyper-param for rate prior
+        # Hyper-param for rate prior
+        self.pr = rates_prior.to(self.device_)
 
         self.rates = nn.Parameter(
                 torch.zeros(self.r_dim),
-                requires_grad=True)
+                requires_grad=True).to(self.device_)
         nn.init.uniform_(self.rates.data) # uniform_ xavier_uniform_
 
         # Prior distribution
@@ -37,7 +38,7 @@ class GTRSubRateIndDirEncoder(nn.Module):
             sample_size=1,
             min_clamp=False,    # should be <= to 10^-7
             max_clamp=False):
-        
+ 
         self.rates.data = F.softplus(self.rates.data)
 #         print("rates")
 #         print(self.rates.shape) # [6]
@@ -83,22 +84,25 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
         self.in_dim = 6     # AG, AC, AT, GC, GT, CT
         self.r_dim = 6     # AG, AC, AT, GC, GT, CT
         self.n_layers = n_layers
-        self.device = device
+        self.device_ = device
 
-        self.pr = rates_prior # Hyper-param for rate prior
+        # Hyper-param for rate prior
+        self.pr = rates_prior.to(self.device_)
 
-        self.noise = torch.ones((self.in_dim)).uniform_()
-#         self.noise = torch.ones((self.r_dim)).normal_()
+        self.noise = torch.zeros((self.in_dim)).uniform_(
+                ).to(self.device_)
+        #self.noise = torch.zeros((self.in_dim)).normal_(
+        #        ).to(self.device_)
 
-        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True),
-                nn.ReLU()]
+        layers = [nn.Linear(self.in_dim, self.h_dim,
+            bias=True).to(self.device_), nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
-                bias=True), nn.ReLU()])
+                bias=True).to(self.device_), nn.ReLU()])
 
-        layers.extend([nn.Linear(self.h_dim, self.r_dim, bias=True),
-            nn.Softplus()])
+        layers.extend([nn.Linear(self.h_dim, self.r_dim,
+            bias=True).to(self.device_), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
 
@@ -157,22 +161,25 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
         self.in_dim = 4
         self.f_dim = 4
         self.n_layers = n_layers
-        self.device = device
+        self.device_ = device
 
-        self.pi = freqs_prior # Hyper-param for rate prior
+        # Hyper-param for rate prior
+        self.pi = freqs_prior.to(self.device_) 
 
-        self.noise = torch.ones((self.in_dim)).uniform_()
-#         self.noise = torch.ones((self.f_dim)).normal_()
+        self.noise = torch.zeros((self.in_dim)).uniform_(
+                ).to(self.device_)
+        #self.noise = torch.zeros((self.in_dim)).normal_(
+        #        ).to(self.device_)
 
-        layers = [nn.Linear(self.in_dim, self.h_dim, bias=True),
-                nn.ReLU()]
+        layers = [nn.Linear(self.in_dim, self.h_dim,
+            bias=True).to(self.device_), nn.ReLU()]
 
         for i in range(1, self.n_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
-                bias=True), nn.ReLU()])
+                bias=True).to(self.device_), nn.ReLU()])
 
-        layers.extend([nn.Linear(self.h_dim, self.f_dim, bias=True),
-            nn.Softplus()])
+        layers.extend([nn.Linear(self.h_dim, self.f_dim,
+            bias=True).to(self.device_), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
 
@@ -194,8 +201,9 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
         f_dist_q = Dirichlet(freqs)
         
         samples = f_dist_q.rsample(torch.Size([sample_size]))
-#         print("samples shape {}".format(samples.shape)) # [sample_size, f_dim]
-#         print(samples)
+        #print("samples shape {}".format(samples.shape))
+        # [sample_size, f_dim]
+        #print(samples)
 
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):

@@ -1,4 +1,4 @@
-from evoVGM.utils import timeSince
+from evoVGM.utils import timeSince, dict_to_cpu
 
 from abc import ABC 
 import time
@@ -22,16 +22,17 @@ class BaseEvoVGM(ABC):
         with torch.no_grad():
             if site_counts == None:
                 site_counts = torch.ones(sites.shape[0]).to(
-                        self.device)
+                        self.device_)
             # Don't shuffle sites
-            return self(
-                    sites,
-                    site_counts,
-                    latent_sample_size=latent_sample_size,
-                    sample_temp=sample_temp, 
-                    alpha_kl=alpha_kl, 
-                    shuffle_sites=False,
-                    keep_vars=keep_vars)
+            return dict_to_cpu(
+                    self(
+                        sites,
+                        site_counts,
+                        latent_sample_size=latent_sample_size,
+                        sample_temp=sample_temp, 
+                        alpha_kl=alpha_kl, 
+                        shuffle_sites=False,
+                        keep_vars=keep_vars))
 
     def fit(self,
             X_train,
@@ -92,8 +93,8 @@ class BaseEvoVGM(ABC):
                         keep_vars=keep_fit_vars)
 
                 elbos = fit_dict["elbo"]
-                lls = fit_dict["logl"]
-                kls = fit_dict["kl_qprior"]
+                lls = fit_dict["logl"].cpu()
+                kls = fit_dict["kl_qprior"].cpu()
 
                 loss = - elbos
                 loss.backward()
@@ -117,6 +118,7 @@ class BaseEvoVGM(ABC):
                                 alpha_kl=alpha_kl,
                                 keep_vars=keep_val_vars)
 
+                        val_dict = dict_to_cpu(val_dict)
                         elbos_val = val_dict["elbo"]
                         lls_val = val_dict["logl"]
                         kls_val = val_dict["kl_qprior"]
@@ -152,7 +154,7 @@ class BaseEvoVGM(ABC):
                     fit_estim = dict()
                     for estim in ["b", "r", "f", "k"]:
                         if estim in fit_dict:
-                            fit_estim[estim] = fit_dict[estim]
+                            fit_estim[estim] = fit_dict[estim].cpu()
                     self.fit_estimates.append(fit_estim)
 
                 if X_val is not None:
@@ -164,7 +166,7 @@ class BaseEvoVGM(ABC):
                         val_estim = dict()
                         for estim in ["b", "r", "f", "k"]:
                             if estim in val_dict:
-                                val_estim[estim] = val_dict[estim]
+                                val_estim[estim]=val_dict[estim]
                         self.val_estimates.append(val_estim)
 
         # convert to ndarray to facilitate post-processing
