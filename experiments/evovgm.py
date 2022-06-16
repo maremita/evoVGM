@@ -63,7 +63,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     overall = dict()
 
     # Instanciate the model
-    e = EvoModel(**m_args).to(m_args["device"])
+    e = EvoModel(**m_args)
 
     val_during_fit = fit_args["val_during_fit"]
     
@@ -101,7 +101,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
         overall["fit_hist_estim"] = e.fit_estimates
 
     overall["fit_hist"] = np.array(fit_hist)
-    
+ 
     # the key in oldest versions was "val_results"
     overall["gen_results"] = e.generate(
             fit_args["X_val"],
@@ -348,7 +348,8 @@ if __name__ == "__main__":
                     dim=0, return_counts=True)
 
             logl_data = compute_log_likelihood_data(AV_unique,
-                    AV_counts, sim_blengths, sim_rates, sim_freqs_vgm)
+                    AV_counts, sim_blengths, sim_rates, 
+                    sim_freqs_vgm)
 
             if verbose:
                 print("\nLog likelihood of the data {}\n".format(
@@ -476,7 +477,6 @@ if __name__ == "__main__":
             estim_gens,
             output_path+"/{}_estim_report".format(job_name),
             )
-
 
     ## Ploting results
     ## ###############

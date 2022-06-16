@@ -162,3 +162,11 @@ def check_finite_grads(model, epoch, verbose=False):
 
     if not finit and verbose: print()
     return finit
+
+def dict_to_cpu(some_dict):
+    new_dict = dict()
+
+    for key in some_dict:
+        new_dict[key] = some_dict[key].cpu()
+
+    return new_dict
