@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 import torch
+from scipy.spatial.distance import hamming
 
 __author__ = "amine remita"
 
@@ -45,11 +46,22 @@ class BaseEvoVGM(ABC):
             optim_learning_rate=0.005, 
             optim_weight_decay=0.1,
             X_val=None,
+            # If not None, a validation stpe will be done
             X_val_counts=None,
+            A=None, 
+            # (nd.array) Embedded ancestral sequence which was used
+            # to generate X_val. If not None, it will be used only
+            # to report its distance with the inferred ancestral
+            # sequence during calidation
+            # It is not used during the inference.
             keep_fit_history=False,
+            # Save estimates for each epoch of fitting step
             keep_val_history=False,
+            # Save estimates for each epoch of validation step
             keep_fit_vars=False,
+            # Save estimate variances from fitting step
             keep_val_vars=False,
+            # Save estimate variances from validation step
             verbose=None):
 
         if optim == 'adam':
@@ -75,6 +87,7 @@ class BaseEvoVGM(ABC):
         if keep_val_history: self.val_estimates = []
 
         if X_val is not None:
+            np_X_val = X_val.cpu().numpy()
             self.elbos_val_list = []
             self.lls_val_list = []
             self.kls_val_list = []
@@ -131,16 +144,17 @@ class BaseEvoVGM(ABC):
                         break
 
                 if verbose:
-                    if epoch % 10 == 0 or epoch <= 10:
+                    if epoch % 10 == 0:
                         chaine = "{}\t Train Epoch: {} \t"\
                                 " ELBO: {:.3f}\t Lls {:.3f}\t KLs "\
                                 "{:.3f}".format(timeSince(start),
                                         epoch, elbos.item(), 
                                         lls.item(), kls.item())
                         if X_val is not None:
-                            chaine += "\n{} \t ELBO_Val: {:.3f}\t"\
+                            chaine += "\nELBO_Val: {:.3f}\t"\
                                     " Lls_Val {:.3f}\t KLs "\
-                                    "{:.3f}".format(elbos_val.item(),
+                                    "{:.3f}".format(
+                                            elbos_val.item(),
                                             lls_val.item(), 
                                             kls_val.item())
                         print(chaine, end="\r")
@@ -167,6 +181,37 @@ class BaseEvoVGM(ABC):
                         for estim in ["b", "r", "f", "k"]:
                             if estim in val_dict:
                                 val_estim[estim]=val_dict[estim]
+
+                        # Generated sequences and inferred ancestral
+                        # sequences are not saved for each epoch
+                        # because they consume a lot of space.
+                        # Instead of that, we report their distances
+                        # with actual sequences.
+ 
+                        # Compute Hamming and average Euclidean distances
+                        # between X_val and generated sequences
+                        xrecons = val_dict["x"].numpy()
+                        x_ham_dist = [hamming(
+                            xrecons[:,i,:].argmax(axis=1),
+                            np_X_val[:,i,:].argmax(axis=1))\
+                                    for i in range(np_X_val.shape[1])]
+                        x_euc_dist = np.linalg.norm(xrecons - np_X_val,
+                                axis=2).mean(0)
+                        val_estim['x_hamming'] = x_ham_dist
+                        val_estim['x_euclidean'] = x_euc_dist
+ 
+                        # Compute Hamming and average Euclidean distances
+                        # between actual ancestral sequence and inferred
+                        # ancestral sequence
+                        if A is not None:
+                            estim_ancestor = val_dict["a"].numpy()
+                            a_ham_dist = hamming(estim_ancestor.argmax(axis=1),
+                                    A.argmax(axis=1))
+                            a_euc_dist = np.linalg.norm(estim_ancestor - A,
+                                    axis=1).mean()
+                            val_estim['a_hamming'] = a_ham_dist
+                            val_estim['a_euclidean'] = a_euc_dist
+
                         self.val_estimates.append(val_estim)
 
         # convert to ndarray to facilitate post-processing
