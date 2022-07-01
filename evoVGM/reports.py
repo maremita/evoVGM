@@ -17,9 +17,10 @@ __author__ = "amine remita"
 def plt_elbo_ll_kl_rep_figure(
         scores,
         out_file,
-        print_xtick_every=10,
+        sizefont=16,
         usetex=False,
-        y_limits=[-10, 0],
+        print_xtick_every=10,
+        legend='best',
         title=None,
         plot_validation=False):
 
@@ -28,13 +29,11 @@ def plt_elbo_ll_kl_rep_figure(
 
     fig_file = out_file+"."+fig_format
 
-    sizefont = 10
+    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
     f, ax = plt.subplots(figsize=(8, 5))
     ax2 = ax.twinx()
-
-    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
     nb_iters = scores.shape[2] 
     x = [j for j in range(1, nb_iters+1)]
@@ -103,26 +102,30 @@ def plt_elbo_ll_kl_rep_figure(
                 color= kl_color_v,
                 alpha=0.1, zorder=1, interpolate=True)
 
-    ax.set_zorder(ax2.get_zorder()+1)
+    #ax.set_zorder(ax2.get_zorder()+1)
     ax.set_frame_on(False)
 
-    #ax.set_ylim(y_limits)
     ax.set_ylim([None, 0])
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
     ax.set_xlabel("Iterations")
     ax.set_ylabel("ELBO and Log Likelihood")
     ax2.set_ylabel("KL(q|prior)")
-    ax.grid()
+    ax.grid(zorder=-1)
+    ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
+    ax.minorticks_on()
 
-    handles,labels = [],[]
-    for ax in f.axes:
-        for h,l in zip(*ax.get_legend_handles_labels()):
-            if l not in labels:
-                handles.append(h)
-                labels.append(l)
-    plt.legend(handles, labels, bbox_to_anchor=(1.1, 1), 
-            loc='upper left', borderaxespad=0.)
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        #plt.legend(handles, labels, bbox_to_anchor=(1.105, 1), 
+        #        loc='upper left', borderaxespad=0.)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
 
     if title:
         plt.suptitle(title)
@@ -137,9 +140,11 @@ def plot_fit_estim_dist(
         scores,
         sim_params,
         out_file,
-        print_xtick_every=10,
+        sizefont=16,
         usetex=False,
+        print_xtick_every=10,
         y_limits=[0., None],
+        legend='upper right',
         title=None):
     """
     scores here is a dictionary of estimate arrays.
@@ -151,20 +156,18 @@ def plot_fit_estim_dist(
 
     fig_file = out_file+"."+fig_format
 
-    sizefont = 10
-
-    f, ax = plt.subplots(figsize=(8, 5))
-
     plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
+
+    f, ax = plt.subplots(figsize=(8, 5))
 
     nb_iters = scores["b"].shape[1]
     x = [j for j in range(1, nb_iters+1)]
 
     params = {
             "b":"Branch lengths",
-            "r":"Rates", 
-            "f":"Frequencies",
+            "r":"Substitution rates", 
+            "f":"Relative frequencies",
             "k":"Kappa"}
 
     colors = { 
@@ -196,16 +199,21 @@ def plot_fit_estim_dist(
     ax.set_ylim(y_limits)
     ax.set_xlabel("Iterations")
     ax.set_ylabel("Euclidean distance")
-    ax.grid()
+    ax.grid(zorder=-1)
+    ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
+    ax.minorticks_on()
 
-    handles,labels = [],[]
-    for ax in f.axes:
-        for h,l in zip(*ax.get_legend_handles_labels()):
-            if l not in labels:
-                handles.append(h)
-                labels.append(l)
-    plt.legend(handles, labels, bbox_to_anchor=(1.02, 1), 
-            loc='upper left', borderaxespad=0.)
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        #plt.legend(handles, labels, bbox_to_anchor=(1.02, 1), 
+        #        loc='upper left', borderaxespad=0.)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
 
     if title:
         plt.suptitle(title)
@@ -220,10 +228,13 @@ def plot_fit_estim_corr(
         scores,
         sim_params,
         out_file,
-        print_xtick_every=10,
+        sizefont=16,
         usetex=False,
+        print_xtick_every=10,
         y_limits=[-1., 1.],
+        legend='lower right',
         title=None):
+        
     """
     scores here is a dictionary of estimate arrays.
     Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
@@ -233,8 +244,6 @@ def plot_fit_estim_corr(
     fig_dpi = 300
 
     fig_file = out_file+"."+fig_format
-
-    sizefont = 10
 
     f, ax = plt.subplots(figsize=(8, 5))
 
@@ -246,9 +255,9 @@ def plot_fit_estim_corr(
 
     params = {
             "b":"Branch lengths",
-            "r":"Rates", 
-            "f":"Frequencies"}
- 
+            "r":"Substitution rates", 
+            "f":"Relative frequencies"}
+
     colors = { 
             "b":"#226E9C",
             "r":"#D12959", 
@@ -284,16 +293,21 @@ def plot_fit_estim_corr(
     ax.set_ylim(y_limits)
     ax.set_xlabel("Iterations")
     ax.set_ylabel("Correlation coefficient")
-    ax.grid()
+    ax.grid(zorder=-1)
+    ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
+    ax.minorticks_on()
 
-    handles,labels = [],[]
-    for ax in f.axes:
-        for h,l in zip(*ax.get_legend_handles_labels()):
-            if l not in labels:
-                handles.append(h)
-                labels.append(l)
-    plt.legend(handles, labels, bbox_to_anchor=(1.01, 1), 
-            loc='upper left', borderaxespad=0.)
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        #plt.legend(handles, labels, bbox_to_anchor=(1.01, 1), 
+        #        loc='upper left', borderaxespad=0.)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
 
     if title:
         plt.suptitle(title)

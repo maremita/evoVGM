@@ -182,7 +182,7 @@ if __name__ == "__main__":
     weight_decay = config.getfloat("hperparams",
             "optim_weight_decay")
 
-    # priors values
+    # Hyper-parameters of prior distributions
     ancestor_prior_conf = config.get("priors", "ancestor_prior", 
             fallback="uniform")
     branch_prior_conf = config.get("priors", "branch_prior", 
@@ -195,9 +195,9 @@ if __name__ == "__main__":
             fallback="uniform")
 
     # plotting settings
+    size_font = config.getint("plotting", "size_font", fallback=16)
     plt_usetex = config.getboolean("plotting", "plt_usetex",
             fallback=False)
-    y_limits = config.get("plotting", "y_limits")
     print_xtick_every = config.getint("plotting",
             "print_xtick_every", fallback=10)
 
@@ -484,9 +484,9 @@ if __name__ == "__main__":
     plt_elbo_ll_kl_rep_figure(
             the_scores,
             output_path+"/{}_rep_fig".format(job_name),
-            print_xtick_every=print_xtick_every,
+            sizefont=size_font,
             usetex=plt_usetex,
-            y_limits=str2floats(y_limits),
+            print_xtick_every=print_xtick_every,
             title=None,
             plot_validation=val_during_fit)
 
@@ -505,9 +505,11 @@ if __name__ == "__main__":
             estimates, 
             sim_params,
             output_path+"/{}_{}_estim_dist".format(job_name, hist),
-            y_limits=[-0.1, 1.1],
+            sizefont=size_font,
+            usetex=plt_usetex,
             print_xtick_every=print_xtick_every,
-            usetex=plt_usetex)
+            y_limits=[-0.1, 1.1],
+            legend='upper right')
 
     # Correlation between estimated paramerters 
     # and values given in the config file
@@ -515,9 +517,11 @@ if __name__ == "__main__":
             estimates, 
             sim_params,
             output_path+"/{}_{}_estim_corr".format(job_name, hist),
-            y_limits=[-1.1, 1.1],
+            sizefont=size_font,
+            usetex=plt_usetex,
             print_xtick_every=print_xtick_every,
-            usetex=plt_usetex)
+            y_limits=[-1.1, 1.1],
+            legend='lower right')
 
     conf_file = output_path+"/{}_conf.ini".format(job_name)
     if not os.path.isfile(conf_file):
