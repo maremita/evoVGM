@@ -44,7 +44,8 @@ def get_categorical_prior(conf, prior_type, verbose=False):
                 "Check {} prior config values".format(prior_type))
 
     if verbose:
-        print("{} priors: {}".format(prior_type, priors))
+        print("{} prior hyper-parameters: {}".format(
+            prior_type, priors))
 
     return priors
 
@@ -52,16 +53,16 @@ def get_branch_prior(conf, verbose=False):
     priors = str2float_tensor(conf, ",", 2, "branch")
 
     if verbose:
-        print("Branch priors: {}".format(priors))
-    
+        print("Branch prior hyper-parameters: {}".format(priors))
+
     return priors 
 
 def get_kappa_prior(conf, verbose=False):
     priors = str2float_tensor(conf, ",", 2, "kappa")
 
     if verbose:
-        print("Kappa priors: {}".format(priors))
-    
+        print("Kappa prior hyper-parameters: {}".format(priors))
+
     return priors 
 
 def str2float_tensor(chaine, sep, nb_values, prior_type):
@@ -168,5 +169,23 @@ def dict_to_cpu(some_dict):
 
     for key in some_dict:
         new_dict[key] = some_dict[key].cpu()
+
+    return new_dict
+
+def dict_to_numpy(some_dict):
+    new_dict = dict()
+
+    for key in some_dict:
+        if isinstance(some_dict[key], torch.Tensor):
+            new_dict[key] = some_dict[key].cpu().detach().numpy()
+        elif isinstance(some_dict[key], list):
+            new_dict[key] = np.array(some_dict[key])
+        elif isinstance(some_dict[key], (int, float)):
+            new_dict[key] = np.array([some_dict[key]])
+        elif isinstance(some_dict[key], np.ndarray):
+            new_dict[key] = some_dict[key]
+        else:
+            raise ValueError("{} in dict_to_numpy() should be"\
+                    " tensor, array, list, int or float")
 
     return new_dict

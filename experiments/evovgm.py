@@ -17,6 +17,7 @@ from evoVGM.reports import plt_elbo_ll_kl_rep_figure
 from evoVGM.reports import aggregate_estimate_values
 from evoVGM.reports import plot_fit_estim_dist
 from evoVGM.reports import plot_fit_estim_corr
+from evoVGM.reports import plot_fit_seq_dist
 from evoVGM.reports import aggregate_sampled_estimates
 from evoVGM.reports import report_sampled_estimates
 
@@ -66,7 +67,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     e = EvoModel(**m_args)
 
     val_during_fit = fit_args["val_during_fit"]
-    
+
     if val_during_fit:
         X_val_fit = fit_args["X_val"]
         X_val_counts_fit = fit_args["X_val_counts"]
@@ -84,6 +85,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             optim_weight_decay=fit_args["weight_decay"], 
             X_val=X_val_fit,
             X_val_counts=X_val_counts_fit,
+            A=fit_args["A"],
             keep_val_history=fit_args["keep_val_history"],
             keep_fit_history=fit_args["keep_fit_history"],
             verbose=fit_args["verbose"]
@@ -237,11 +239,13 @@ if __name__ == "__main__":
     ## ############
     results_file = output_path+"/{}_results.pkl".format(job_name)
 
+    val_during_fit = False
+
     if sim_data:
         val_during_fit = True
 
-    elif not os.path.isfile(fasta_val_file):
-        val_during_fit = False
+    if os.path.isfile(fasta_val_file):
+        val_during_fit = True
 
     if verbose:
         print("Validation during fitting: {}\n".format(
@@ -267,9 +271,9 @@ if __name__ == "__main__":
         if sim_data:
             logl_data=result_data["logl_data"]
             # Get validation sequences
-            av_sequences = fasta_to_list(v_fasta_file, verbose)
-            av_motifs_cats = build_msa_categorical(av_sequences)
-            AV = av_motifs_cats.data
+            #av_sequences = fasta_to_list(v_fasta_file, verbose)
+            #av_motifs_cats = build_msa_categorical(av_sequences)
+            #AV = av_motifs_cats.data
 
     ## Execute the evaluation
     ## ######################
@@ -337,13 +341,17 @@ if __name__ == "__main__":
         V = torch.from_numpy(v_motifs_cats.data).to(device)
         V_counts = None 
 
+        A_val = None  # embedding of val ancestral sequence
+
         if sim_data:
+            # Transform Val ancestral sequence (np.ndarray)
+            A_val = build_msa_categorical(v_root).data.reshape(-1, 4)
+
             # Transform Val sequences including ancestral sequence
             # This will be used to compute the true logl knowing
             # the true parameters
             all_val_seqs = [v_root, *v_sequences]
-            av_motifs_cats = build_msa_categorical(all_val_seqs)
-            AV = av_motifs_cats.data
+            AV = build_msa_categorical(all_val_seqs).data
             AV_unique, AV_counts = torch.from_numpy(AV).unique(
                     dim=0, return_counts=True)
 
@@ -359,8 +367,9 @@ if __name__ == "__main__":
         a_dim = 4
         m_dim = len(x_sequences) # Number of sequences
 
-        ## Get prior values
-        ## ################
+        if verbose: print()
+        ## Get prior hyper-parameter values
+        ## ################################
 
         ancestor_prior = get_categorical_prior(ancestor_prior_conf,
                 "ancestor", verbose=verbose)
@@ -368,12 +377,12 @@ if __name__ == "__main__":
                 verbose=verbose)
 
         if evomodel_type == "gtr":
-            # Get rate and freq priors if the model is EvoGTRNVMSA_KL
+            # Get rate and freq priors if the model is EvoVGM_GTR
             rates_prior = get_categorical_prior(rates_prior_conf, 
                     "rates", verbose=verbose)
             freqs_prior = get_categorical_prior(freqs_prior_conf,
                     "freqs", verbose=verbose)
-        
+
         elif evomodel_type == "k80":
             kappa_prior = get_kappa_prior(kappa_prior_conf, 
                     verbose=verbose)
@@ -381,7 +390,6 @@ if __name__ == "__main__":
         if verbose: print()
         ## Evo model type
         ## ##############
-
         if evomodel_type == "gtr":
             EvoModelClass = EvoVGM_GTR
         elif evomodel_type == "k80":
@@ -400,7 +408,7 @@ if __name__ == "__main__":
                 }
 
         if evomodel_type == "gtr":
-            # Add rate and freq priors if the model is EvoGTRNVMSA_KL
+            # Add rate and freq priors if the model is EvoVGM_GTR
             model_args["rates_prior"] = rates_prior
             model_args["freqs_prior"] = freqs_prior
 
@@ -420,6 +428,7 @@ if __name__ == "__main__":
                 "X_counts":X_counts,
                 "X_val":V,
                 "X_val_counts":V_counts,
+                "A":A_val,
                 "nb_samples":nb_samples,
                 "sample_temp":sample_temp,
                 "alpha_kl":alpha_kl,
@@ -442,8 +451,9 @@ if __name__ == "__main__":
 
         #
         result_data = dict(
-                rep_results=rep_results,
+                rep_results=rep_results, # rep for replicates
                 )
+
         if sim_data:
             result_data["logl_data"] = logl_data
 
@@ -464,7 +474,6 @@ if __name__ == "__main__":
 
     the_scores = np.array(the_scores)
     #print("The scores {}".format(the_scores.shape))
-
 
     ## Generate report file from sampling step
     ## #######################################
@@ -522,6 +531,45 @@ if __name__ == "__main__":
             print_xtick_every=print_xtick_every,
             y_limits=[-1.1, 1.1],
             legend='lower right')
+
+    if val_during_fit:
+        # Euclidean and Hamming distances
+        euc_keys = ["x_euclidean"]
+        ham_keys = ["x_hamming"]
+        
+        if "a_euclidean" in estimates:
+            euc_keys.append("a_euclidean")
+
+        if "a_hamming" in estimates:
+            ham_keys.append("a_hamming")
+
+        # Euclidean distance between actual A and inferred A
+        # Euclidean distance between actual X and generated X
+        plot_fit_seq_dist(
+                estimates,
+                euc_keys,
+                output_path+"/{}_{}_axseq_euclidean_dist".format(
+                        job_name, hist),
+                sizefont=size_font,
+                usetex=plt_usetex,
+                print_xtick_every=print_xtick_every,
+                y_limits=[-0.1, 1.1],
+                y_label="Euclidean distance",
+                legend='upper right')
+
+        # Hamming distance between actual A and inferred A
+        # Hamming distance between actual X and generated X
+        plot_fit_seq_dist(
+                estimates,
+                ham_keys,
+                output_path+"/{}_{}_axseq_hamming_dist".format(
+                        job_name, hist),
+                sizefont=size_font,
+                usetex=plt_usetex,
+                print_xtick_every=print_xtick_every,
+                y_limits=[-0.1, 1.1],
+                y_label="Hamming distance",
+                legend='upper right')
 
     conf_file = output_path+"/{}_conf.ini".format(job_name)
     if not os.path.isfile(conf_file):

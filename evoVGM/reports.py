@@ -3,9 +3,11 @@ from evoVGM.utils import compute_corr
 #import os.path
 import numpy as np
 #import pandas as pd
+import torch
 
 import logomaker as lm
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import seaborn as sns
 
 from scipy.spatial.distance import pdist
@@ -179,7 +181,7 @@ def plot_fit_estim_dist(
     for ind, name in enumerate(scores):
         if name in params:
             estim_scores = scores[name]
-            sim_param = sim_params[name].reshape(1,1,-1)
+            sim_param = sim_params[name].reshape(1, 1, -1)
 
             # eucl dist
             dists = np.linalg.norm(
@@ -188,7 +190,9 @@ def plot_fit_estim_dist(
 
             m = dists.mean(0)
             s = dists.std(0)
-            ax.plot(x, m, "-", color=colors[name], label=params[name])
+
+            ax.plot(x, m, "-", color=colors[name],
+                    label=params[name])
 
             ax.fill_between(x, m-s, m+s, 
                     color=colors[name],
@@ -282,7 +286,8 @@ def plot_fit_estim_corr(
 
             m = corrs.mean(0)
             s = corrs.std(0)
-            ax.plot(x, m, "-", color=colors[name], label=params[name])
+            ax.plot(x, m, "-", color=colors[name],
+                    label=params[name])
 
             ax.fill_between(x, m-s, m+s, 
                     color=colors[name],
@@ -318,6 +323,107 @@ def plot_fit_estim_corr(
     plt.close(f)
 
 
+def plot_fit_seq_dist(
+        scores,
+        keys, # for example ["x_euclidean", "a_euclidean"]
+        out_file,
+        sizefont=16,
+        usetex=False,
+        print_xtick_every=10,
+        y_limits=[0., None],
+        y_label="Distance",
+        legend='upper right',
+        title=None):
+    """
+    scores here is a dictionary of estimate arrays.
+    Each array has the shape : (nb_reps, nb_epochs, *dist_shape)
+    """
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.16, hspace=0.1)
+
+    f, ax = plt.subplots(figsize=(8, 5))
+
+    nb_iters = scores[keys[0]].shape[1]
+    x = [j for j in range(1, nb_iters+1)]
+ 
+    m_dim = 0 # number of sequences in the alignment
+    for name in keys:
+        if name.startswith("x_"):
+            m_dim = scores[name].shape[2]
+            break
+
+    if m_dim:
+        #cmap = cm.get_cmap('tab10')
+        cmap = cm.get_cmap('viridis')
+        x_colors = [cmap(j/m_dim) for j in range(0, m_dim)]
+
+    a_color = "#d62828" # "#6F5A87"
+
+    for ind, name in enumerate(keys):
+        if name in scores:
+            dist_scores = scores[name]
+            # shape : (nb_reps, nb_epochs, dist_shape)
+
+            if name.startswith("x_"):
+                for xseq in range(m_dim):
+                    dists = dist_scores[..., xseq]
+                    m = dists.mean(0)
+                    s = dists.std(0)
+
+                    ax.plot(x, m, "-", color=x_colors[xseq],
+                            label="$x_{}$".format(xseq))
+
+                    ax.fill_between(x, m-s, m+s, 
+                            color=x_colors[xseq],
+                            alpha=0.2, interpolate=True)
+     
+            elif name.startswith("a_"):
+                dists = dist_scores.squeeze(-1)
+                m = dists.mean(0)
+                s = dists.std(0)
+
+                ax.plot(x, m, "-", color=a_color,
+                        label="a")
+
+                ax.fill_between(x, m-s, m+s, 
+                        color=a_color,
+                        alpha=0.2, interpolate=True)
+ 
+    ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
+            t % print_xtick_every==0])
+    ax.set_ylim(y_limits)
+    ax.set_xlabel("Iterations")
+    ax.set_ylabel(y_label)
+    ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
+    ax.minorticks_on()
+
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        #plt.legend(handles, labels, bbox_to_anchor=(1.02, 1), 
+        #        loc='upper left', borderaxespad=0.)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+
 def aggregate_estimate_values(
         rep_results,
         key, #val_hist_estim
@@ -331,7 +437,10 @@ def aggregate_estimate_values(
     estim_reps = [result[key] for result in rep_results]
 
     param_names = ["b", "r", "f", "k"]
-    names = param_names+["a", "x"]
+    names = param_names+[
+            "a", "x", 
+            "a_hamming", "a_euclidean",
+            "x_hamming", "x_euclidean"]
 
     estim_shapes = dict()
 
@@ -347,7 +456,7 @@ def aggregate_estimate_values(
     for name in names:
         if name in estim_reps[0][0]:
             #print(name)
-            
+ 
             estim = estim_reps[0][0][name]
             if name in param_names:
                 shape = list(estim.flatten().shape)
@@ -363,13 +472,20 @@ def aggregate_estimate_values(
 
     for i, replicat in enumerate(estim_reps): # list of reps
         #print("replicat {}".format(type(replicat)))
-        #for j, epoch in enumerate(replicat): # list of epochs
         for j in range(nb_epochs): # list of epochs
             epoch = replicat[j]
             #print("epoch {}".format(type(epoch)))
             for name in names:
                 if name in epoch:
-                    estimation = epoch[name].cpu().detach().numpy()
+
+                    if isinstance(epoch[name], torch.Tensor):
+                        estimation = epoch[name].cpu().detach(
+                                ).numpy()
+                    elif isinstance(epoch[name], np.ndarray): 
+                        estimation = epoch[name]
+                    else:
+                        raise ValueError("{} is not tensor"\
+                                " or array in {}".format(name, key))
 
                     if name in param_names:
                         #print(name, estimation.shape)
@@ -421,7 +537,15 @@ def aggregate_sampled_estimates(
         #print("sampling {}".format(type(sampling)))
         for name in names:
             if name in sampling:
-                estimation = sampling[name].cpu().detach().numpy()
+                if isinstance(sampling[name], torch.Tensor):
+                    estimation = sampling[name].cpu().detach(
+                            ).numpy()
+                elif isinstance(sampling[name], np.ndarray): 
+                    estimation = sampling[name]
+                else:
+                    raise ValueError(
+                            "{} is not tensor or array in {}".format(
+                                name, key))
 
                 if name in param_names:
                     #print(name, estimation.shape)

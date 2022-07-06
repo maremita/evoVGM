@@ -1,4 +1,4 @@
-from evoVGM.utils import timeSince, dict_to_cpu
+from evoVGM.utils import timeSince, dict_to_numpy
 
 from abc import ABC 
 import time
@@ -25,7 +25,7 @@ class BaseEvoVGM(ABC):
                 site_counts = torch.ones(sites.shape[0]).to(
                         self.device_)
             # Don't shuffle sites
-            return dict_to_cpu(
+            return dict_to_numpy(
                     self(
                         sites,
                         site_counts,
@@ -49,7 +49,7 @@ class BaseEvoVGM(ABC):
             # If not None, a validation stpe will be done
             X_val_counts=None,
             A=None, 
-            # (nd.array) Embedded ancestral sequence which was used
+            # (np.ndarray) Embedded ancestral sequence which was used
             # to generate X_val. If not None, it will be used only
             # to report its distance with the inferred ancestral
             # sequence during calidation
@@ -74,7 +74,6 @@ class BaseEvoVGM(ABC):
                     weight_decay=optim_weight_decay)
 
         start = time.time()
-        #N_dim = X_train_counts.sum()
 
         if X_val_counts is not None: N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
@@ -131,7 +130,7 @@ class BaseEvoVGM(ABC):
                                 alpha_kl=alpha_kl,
                                 keep_vars=keep_val_vars)
 
-                        val_dict = dict_to_cpu(val_dict)
+                        val_dict = dict_to_numpy(val_dict)
                         elbos_val = val_dict["elbo"]
                         lls_val = val_dict["logl"]
                         kls_val = val_dict["kl_qprior"]
@@ -188,27 +187,32 @@ class BaseEvoVGM(ABC):
                         # Instead of that, we report their distances
                         # with actual sequences.
  
-                        # Compute Hamming and average Euclidean distances
+                        # Compute Hamming and average Euclidean 
+                        # distances
                         # between X_val and generated sequences
-                        xrecons = val_dict["x"].numpy()
-                        x_ham_dist = [hamming(
+                        xrecons = val_dict["x"]
+                        x_ham_dist = np.array([hamming(
                             xrecons[:,i,:].argmax(axis=1),
                             np_X_val[:,i,:].argmax(axis=1))\
-                                    for i in range(np_X_val.shape[1])]
-                        x_euc_dist = np.linalg.norm(xrecons - np_X_val,
+                                    for i in range(
+                                        np_X_val.shape[1])])
+                        x_euc_dist = np.linalg.norm(xrecons -np_X_val,
                                 axis=2).mean(0)
                         val_estim['x_hamming'] = x_ham_dist
                         val_estim['x_euclidean'] = x_euc_dist
  
-                        # Compute Hamming and average Euclidean distances
-                        # between actual ancestral sequence and inferred
-                        # ancestral sequence
+                        # Compute Hamming and average Euclidean 
+                        # distances
+                        # between actual ancestral sequence and
+                        # inferred ancestral sequence
                         if A is not None:
-                            estim_ancestor = val_dict["a"].numpy()
-                            a_ham_dist = hamming(estim_ancestor.argmax(axis=1),
-                                    A.argmax(axis=1))
-                            a_euc_dist = np.linalg.norm(estim_ancestor - A,
-                                    axis=1).mean()
+                            estim_ancestor = val_dict["a"]
+                            a_ham_dist = np.array([hamming(
+                                    estim_ancestor.argmax(axis=1),
+                                    A.argmax(axis=1))])
+                            a_euc_dist = np.array([np.linalg.norm(
+                                    estim_ancestor - A, 
+                                    axis=1).mean()])
                             val_estim['a_hamming'] = a_ham_dist
                             val_estim['a_euclidean'] = a_euc_dist
 
