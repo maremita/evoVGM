@@ -67,15 +67,8 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     # Instanciate the model
     e = EvoModel(**m_args)
 
-    val_during_fit = fit_args["val_during_fit"]
-
-    if val_during_fit:
-        X_val_fit = fit_args["X_val"]
-        X_val_counts_fit = fit_args["X_val_counts"]
-    else:
-        X_val_fit = None
-        X_val_counts_fit = None
-
+    ## Fitting and param3ter estimation
+    ## ################################
     e.fit(fit_args["X"], fit_args["X_counts"],
             latent_sample_size=fit_args["nb_samples"],
             sample_temp=fit_args["sample_temp"], 
@@ -84,9 +77,9 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             optim=fit_args["optim"], 
             optim_learning_rate=fit_args["learning_rate"],
             optim_weight_decay=fit_args["weight_decay"], 
-            X_val=X_val_fit,
-            X_val_counts=X_val_counts_fit,
-            A=fit_args["A"],
+            X_val=fit_args["X_val"],
+            X_val_counts=fit_args["X_val_counts"],
+            A_val=fit_args["A_val"],
             keep_val_history=fit_args["keep_val_history"],
             keep_fit_history=fit_args["keep_fit_history"],
             verbose=fit_args["verbose"]
@@ -94,7 +87,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
 
     fit_hist = [e.elbos_list, e.lls_list, e.kls_list]
 
-    if val_during_fit:
+    if fit_args["X_val"] is not None:
         fit_hist.extend([
             e.elbos_val_list,
             e.lls_val_list,
@@ -104,11 +97,16 @@ def eval_evomodel(EvoModel, m_args, fit_args):
         overall["fit_hist_estim"] = e.fit_estimates
 
     overall["fit_hist"] = np.array(fit_hist)
- 
+
+    ## Generation after fitting
+    ## ########################
+    # If Validation is False, X_val corresponds to X.
     # the key in oldest versions was "val_results"
     overall["gen_results"] = e.generate(
-            fit_args["X_val"],
-            fit_args["X_val_counts"],
+            # X_gen here corresponds to X_val if validation is True,
+            # otherwise it corresponds to X.
+            fit_args["X_gen"],
+            None,
             latent_sample_size=fit_args["nb_samples"],
             sample_temp=fit_args["sample_temp"], 
             alpha_kl=fit_args["alpha_kl"],
@@ -126,7 +124,6 @@ if __name__ == "__main__":
 
     ## Fetch argument values from ini file
     ## ###################################
-
     config_file = sys.argv[1]
     config = configparser.ConfigParser(
             interpolation=configparser.ExtendedInterpolation())
@@ -140,14 +137,16 @@ if __name__ == "__main__":
             fallback=False)
 
     # Sequence data
+    validation = config.getboolean("data", "validation",
+            fallback=True)
     sim_data = config.getboolean("data", "sim_data",
             fallback=False)
-    from_fasta = config.getboolean("data", "from_fasta",
+    sim_from_fasta = config.getboolean("data", "sim_from_fasta",
             fallback=False)
     fasta_fit_file = config.get("data", "fasta_fit_file",
-            fallback=False)
+            fallback="")
     fasta_val_file = config.get("data", "fasta_val_file",
-            fallback=False)
+            fallback="")
     nb_sites = config.getint("data", "alignment_size", fallback=100)
     sim_blengths = config.get("data", "branch_lengths",
             fallback="0.1,0.1")
@@ -163,27 +162,39 @@ if __name__ == "__main__":
 
     # setting parameters
     job_name = config.get("settings", "job_name", fallback=None)
-    seed = config.getint("settings", "seed")
-    device_str = config.get("settings", "device")
-    verbose = config.get("settings", "verbose")
+    seed = config.getint("settings", "seed",
+            fallback=42)
+    device_str = config.get("settings", "device",
+            fallback="cpu")
+    verbose = config.get("settings", "verbose",
+            fallback=1)
     compress_files = config.getboolean("settings", "compress_files",
             fallback=False)
 
     # Evo variational model type
-    evomodel_type = config.get("subvmodel", "evomodel")
+    evomodel_type = config.get("subvmodel", "evomodel",
+            fallback="gtr")
 
     # Hyper parameters
-    nb_replicates = config.getint("hperparams", "nb_replicates") 
-    nb_samples = config.getint("hperparams", "nb_samples")
-    h_dim = config.getint("hperparams", "hidden_size")
+    nb_replicates = config.getint("hperparams", "nb_replicates",
+            fallback=2)
+    nb_samples = config.getint("hperparams", "nb_samples",
+            fallback=10)
+    h_dim = config.getint("hperparams", "hidden_size",
+            fallback=32)
     nb_layers = config.getint("hperparams", "nb_layers", fallback=3)
-    sample_temp = config.getfloat("hperparams", "sample_temp")
-    alpha_kl = config.getfloat("hperparams", "alpha_kl")
-    n_epochs = config.getint("hperparams", "n_epochs")
-    optim = config.get("hperparams", "optim")
-    learning_rate = config.getfloat("hperparams", "learning_rate")
+    sample_temp = config.getfloat("hperparams", "sample_temp",
+            fallback=0.1)
+    alpha_kl = config.getfloat("hperparams", "alpha_kl",
+            fallback=0.0001)
+    n_epochs = config.getint("hperparams", "n_epochs",
+            fallback=100)
+    optim = config.get("hperparams", "optim",
+            fallback="adam")
+    learning_rate = config.getfloat("hperparams", "learning_rate",
+            fallback=0.005)
     weight_decay = config.getfloat("hperparams",
-            "optim_weight_decay")
+            "optim_weight_decay", fallback=0.00001)
 
     # Hyper-parameters of prior distributions
     ancestor_prior_conf = config.get("priors", "ancestor_prior", 
@@ -236,7 +247,8 @@ if __name__ == "__main__":
     # Computing device setting
     if device_str != "cpu" and not torch.cuda.is_available():
         if verbose: 
-            print("\nCuda is not available. Changing device to 'cpu'")
+            print("\nCuda is not available."\
+                    " Changing device to 'cpu'")
         device_str = 'cpu'
 
     device = torch.device(device_str)
@@ -264,70 +276,59 @@ if __name__ == "__main__":
         print("\nExperiment output: {}".format(
             output_path))
 
-    ## Load results
-    ## ############
+    ## Loading results from file
+    ## #########################
     results_file = output_path+"/{}_results.pkl".format(job_name)
-
-    val_during_fit = False
-
-    if sim_data:
-        val_during_fit = True
-
-    if os.path.isfile(fasta_val_file):
-        val_during_fit = True
-
-    if verbose:
-        print("\nValidation during fitting: {}".format(
-            val_during_fit))
-
-    if sim_data:
-        # training sequences
-        x_fasta_file = output_path+"/{}_train.fasta".format(job_name)
-        # validation sequences
-        v_fasta_file = output_path+"/{}_valid.fasta".format(job_name)
-    else:
-        x_fasta_file = fasta_fit_file
-        v_fasta_file = fasta_fit_file
-
-        if val_during_fit:
-            v_fasta_file = fasta_val_file
 
     if os.path.isfile(results_file) and scores_from_file:
         if verbose: print("\nLoading scores from file...")
         result_data = load(results_file)
         rep_results=result_data["rep_results"]
 
-        if sim_data:
-            logl_data=result_data["logl_data"]
-            # Get validation sequences
-            #av_sequences = fasta_to_list(v_fasta_file, verbose)
-            #av_motifs_cats = build_msa_categorical(av_sequences)
-            #AV = av_motifs_cats.data
-
-    ## Execute the evaluation
-    ## ######################
+    ## Execute the evaluation and save results
+    ## #######################################
     else:
         if verbose: print("\nRunning the evaluation...")
 
+        if verbose:
+            print("\nValidation during fitting: {}".format(
+                validation))
+
+        # Validation related variables
+        A_val = None
+        X_val = None
+        X_val_counts = None
+
         ## Data preparation
         ## ################
-
         if sim_data:
-            if os.path.isfile(x_fasta_file) and \
-                    os.path.isfile(v_fasta_file) and from_fasta:
- 
-                if verbose: 
-                    print("\nLoading simulated sequences from files...")
-                # Load from files
-                ax_sequences = fasta_to_list(x_fasta_file, verbose)
-                av_sequences = fasta_to_list(v_fasta_file, verbose)
+            # Files paths of simulated data
+            # training sequences
+            x_fasta_file = output_path+"/{}_train.fasta".format(
+                    job_name)
+            # validation sequences
+            v_fasta_file = output_path+"/{}_valid.fasta".format(
+                    job_name)
 
+            # Extract data from simulated FASTA files if they exist
+            if os.path.isfile(x_fasta_file) and sim_from_fasta:
+                if verbose: 
+                    print("\nLoading simulated sequences"\
+                            " from files...")
+                # Load from files
+                # Here, simulated FASTA file contain the
+                # root sequence
+                ax_sequences = fasta_to_list(x_fasta_file, verbose)
                 x_root = ax_sequences[0]
                 x_sequences = ax_sequences[1:]
 
-                v_root = av_sequences[0]
-                v_sequences = av_sequences[1:]
+                if validation and os.path.isfile(v_fasta_file):
+                    av_sequences = fasta_to_list(v_fasta_file,
+                            verbose)
+                    v_root = av_sequences[0]
+                    v_sequences = av_sequences[1:]
 
+            # Simulate new data
             else:
                 if verbose: print("\nSimulating sequences...")
                 # Evolve sequences
@@ -343,55 +344,99 @@ if __name__ == "__main__":
                         seed=seed,
                         verbose=verbose)
 
-                v_root, v_sequences = evolve_sequences(
-                        tree,
-                        fasta_file=v_fasta_file,
-                        nb_sites=nb_sites,
-                        subst_rates=sim_rates,
-                        state_freqs=sim_freqs,
-                        return_anc=True,
-                        seed=seed+42,
-                        verbose=verbose)
+                if validation:
+                    v_root, v_sequences = evolve_sequences(
+                            tree,
+                            fasta_file=v_fasta_file,
+                            nb_sites=nb_sites,
+                            subst_rates=sim_rates,
+                            state_freqs=sim_freqs,
+                            return_anc=True,
+                            seed=seed+42,
+                            verbose=verbose)
 
-        else:
-            if verbose: print("\nLoading sequences from files...")
-            x_sequences = fasta_to_list(x_fasta_file, verbose)
-            v_sequences = fasta_to_list(v_fasta_file, verbose)
-
-        # Transform training sequences
-        x_motifs_cats = build_msa_categorical(x_sequences)
-        X = torch.from_numpy(x_motifs_cats.data).to(device)
-        X, X_counts = X.unique(dim=0, return_counts=True)
-
-        # Transform validation sequences
-        # No need to get unique sites.
-        # Validation need only forward pass and it's fast.
-        v_motifs_cats = build_msa_categorical(v_sequences)
-        V = torch.from_numpy(v_motifs_cats.data).to(device)
-        V_counts = None 
-
-        A_val = None  # embedding of val ancestral sequence
-
-        if sim_data:
-            # Transform Val ancestral sequence (np.ndarray)
-            A_val = build_msa_categorical(v_root).data.reshape(-1, 4)
-
-            # Transform Val sequences including ancestral sequence
-            # This will be used to compute the true logl knowing
-            # the true parameters
-            all_val_seqs = [v_root, *v_sequences]
-            AV = build_msa_categorical(all_val_seqs).data
-            AV_unique, AV_counts = torch.from_numpy(AV).unique(
+            # Transform the fitting sequences including ancestral
+            # sequence. This will be used to compute the true logl
+            # knowing the true parameters
+            all_x_seqs = [x_root, *x_sequences]
+            AX_unique, AX_counts = torch.from_numpy(
+                    build_msa_categorical(all_x_seqs).data).unique(
                     dim=0, return_counts=True)
 
-            logl_data = compute_log_likelihood_data(AV_unique,
-                    AV_counts, sim_blengths, sim_rates, 
+            x_logl_data = compute_log_likelihood_data(AX_unique,
+                    AX_counts, sim_blengths, sim_rates, 
                     sim_freqs_vgm)
 
             if verbose:
-                print("\nLog likelihood of the data {}".format(
-                    logl_data))
+                print("\nLog likelihood of the fitting data"\
+                        " {}".format(x_logl_data))
 
+            if validation:
+                # Transform Val ancestral sequence (np.ndarray)
+                A_val = build_msa_categorical(
+                        v_root).data.reshape(-1, 4)
+
+                # Transform the validation sequences including 
+                # ancestral sequence. this will be used to compute
+                # the true logl knowing the true parameters
+                all_v_seqs = [v_root, *v_sequences]
+                AV_unique, AV_counts = torch.from_numpy(
+                        build_msa_categorical(
+                            all_v_seqs).data).unique(dim=0, 
+                                    return_counts=True)
+
+                v_logl_data = compute_log_likelihood_data(AV_unique,
+                        AV_counts, sim_blengths, sim_rates, 
+                        sim_freqs_vgm)
+
+                if verbose:
+                    print("Log likelihood of the validation data"\
+                            " {}".format(v_logl_data))
+
+        # Extract data from given FASTA files
+        else:
+            # Files paths of given FASTA files
+            # training sequences
+            x_fasta_file = fasta_fit_file
+            # validation sequences
+            v_fasta_file = fasta_fit_file
+
+            if validation and os.path.isfile(fasta_val_file):
+                v_fasta_file = fasta_val_file
+
+            # Given FASTA files do not contain root sequences
+            if verbose: print("\nLoading sequences from files...")
+            x_sequences = fasta_to_list(x_fasta_file, verbose)
+
+            if validation:
+                v_sequences = fasta_to_list(v_fasta_file, verbose)
+        # End of fetching/simulating the data
+
+        # Update file paths in config file
+        config.set("data", "fasta_fit_file", x_fasta_file)
+        if validation:
+            config.set("data", "fasta_val_file", v_fasta_file)
+        else:
+            config.remove_option("data", "fasta_val_file")
+
+        # Transform fitting sequences
+        x_motifs_cats = build_msa_categorical(x_sequences)
+        X = torch.from_numpy(x_motifs_cats.data).to(device)
+        X_gen = X.clone().detach() # will be used in generation
+        X, X_counts = X.unique(dim=0, return_counts=True)
+
+        if validation:
+            # Transform validation sequences
+            # No need to get unique sites.
+            # Validation need only forward pass and it's fast.
+            v_motifs_cats = build_msa_categorical(v_sequences)
+            X_val = torch.from_numpy(v_motifs_cats.data).to(device)
+            # X_gen here corresponds to X_val if validation is True,
+            # otherwise it corresponds to X.
+            X_gen = X_val.clone().detach() # will be used in gen.
+            X_val_counts = None 
+
+        # Set dimensions
         x_dim = 4
         a_dim = 4
         m_dim = len(x_sequences) # Number of sequences
@@ -445,7 +490,7 @@ if __name__ == "__main__":
         elif evomodel_type == "k80":
             model_args["kappa_prior"] = kappa_prior
 
-        if val_during_fit:
+        if validation:
             keep_fit_history=False
             keep_val_history=True
         else:
@@ -456,9 +501,10 @@ if __name__ == "__main__":
         fit_args = {
                 "X":X,
                 "X_counts":X_counts,
-                "X_val":V,
-                "X_val_counts":V_counts,
-                "A":A_val,
+                "X_val":X_val,
+                "X_val_counts":X_val_counts,
+                "X_gen":X_gen,
+                "A_val":A_val,
                 "nb_samples":nb_samples,
                 "sample_temp":sample_temp,
                 "alpha_kl":alpha_kl,
@@ -468,7 +514,6 @@ if __name__ == "__main__":
                 "weight_decay":weight_decay,
                 "keep_fit_history":keep_fit_history,
                 "keep_val_history":keep_val_history,
-                "val_during_fit":val_during_fit,
                 "keep_gen_vars":True,
                 "verbose":not sim_data
                 }
@@ -485,10 +530,19 @@ if __name__ == "__main__":
                 )
 
         if sim_data:
-            result_data["logl_data"] = logl_data
+            result_data["logl_data"] = x_logl_data
+            if validation:
+                result_data["logl_val_data"] = v_logl_data
 
         dump(result_data, results_file, compress=compress_files)
 
+        # Writing a config file and package versions
+        conf_file = output_path+"/{}_conf.ini".format(job_name)
+        if not os.path.isfile(conf_file):
+            write_conf_packages(config, conf_file)
+
+    ## Report and plot results
+    ## #######################
     scores = [result["fit_hist"] for result in rep_results]
 
     # get min number of epoch of all reps 
@@ -527,9 +581,9 @@ if __name__ == "__main__":
             usetex=plt_usetex,
             print_xtick_every=print_xtick_every,
             title=None,
-            plot_validation=val_during_fit)
+            plot_validation=validation)
 
-    if val_during_fit:
+    if validation:
         hist = "val"
     else:
         hist = "fit"
@@ -562,7 +616,7 @@ if __name__ == "__main__":
             y_limits=[-1.1, 1.1],
             legend='lower right')
 
-    if val_during_fit:
+    if validation:
         # Euclidean and Hamming distances
         euc_keys = ["x_euclidean"]
         ham_keys = ["x_hamming"]
@@ -600,9 +654,5 @@ if __name__ == "__main__":
                 y_limits=[-0.1, 1.1],
                 y_label="Hamming distance",
                 legend='upper right')
-
-    conf_file = output_path+"/{}_conf.ini".format(job_name)
-    if not os.path.isfile(conf_file):
-        write_conf_packages(config, conf_file)
 
     print("\nFin normale du programme\n")

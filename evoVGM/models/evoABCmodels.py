@@ -48,7 +48,7 @@ class BaseEvoVGM(ABC):
             X_val=None,
             # If not None, a validation stpe will be done
             X_val_counts=None,
-            A=None, 
+            A_val=None, 
             # (np.ndarray) Embedded ancestral sequence which was used
             # to generate X_val. If not None, it will be used only
             # to report its distance with the inferred ancestral
@@ -205,13 +205,13 @@ class BaseEvoVGM(ABC):
                         # distances
                         # between actual ancestral sequence and
                         # inferred ancestral sequence
-                        if A is not None:
+                        if A_val is not None:
                             estim_ancestor = val_dict["a"]
                             a_ham_dist = np.array([hamming(
                                     estim_ancestor.argmax(axis=1),
-                                    A.argmax(axis=1))])
+                                    A_val.argmax(axis=1))])
                             a_euc_dist = np.array([np.linalg.norm(
-                                    estim_ancestor - A, 
+                                    estim_ancestor - A_val, 
                                     axis=1).mean()])
                             val_estim['a_hamming'] = a_ham_dist
                             val_estim['a_euclidean'] = a_euc_dist
