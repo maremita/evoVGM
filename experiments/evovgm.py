@@ -42,10 +42,12 @@ from joblib import dump, load
 
 __author__ = "amine remita"
 
+
 """
 evovgm.py is the main program that uses the EvoVGM 
 model with different substitution models (JC69, K80 and GTR).
-The model can be trained for nb_replicates times.
+The experiment of fitting the model can be done for
+<nb_replicates> times.
 The program can use a sequence alignment from a Fasta file or
 simulate a new sequence alignment using evolutionary parameters
 defined in the config file.
@@ -53,9 +55,8 @@ defined in the config file.
 Once the evoVGM package is installed, you can run evovgm.py 
 using this command line:
 
-evovgm.py evovgm_conf_template.ini
-
-where evovgm_conf_template.ini is the config file.
+# evovgm.py evovgm_conf_template.ini
+where <evovgm_conf_template.ini> is the config file.
 """
 
 ## Evaluation function
@@ -121,7 +122,7 @@ if __name__ == "__main__":
         print("Config file is missing!!")
         sys.exit()
 
-    print("RUN {}".format(sys.argv[0]), flush=True)
+    print("\nRunning {}".format(sys.argv[0]), flush=True)
 
     ## Fetch argument values from ini file
     ## ###################################
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     job_name = config.get("settings", "job_name", fallback=None)
     seed = config.getint("settings", "seed")
     device_str = config.get("settings", "device")
-    verbose = config.getboolean("settings", "verbose")
+    verbose = config.get("settings", "verbose")
     compress_files = config.getboolean("settings", "compress_files",
             fallback=False)
 
@@ -203,15 +204,39 @@ if __name__ == "__main__":
     print_xtick_every = config.getint("plotting",
             "print_xtick_every", fallback=10)
 
+    # Process verbose
+    if verbose.lower() == "false":
+        verbose = 0
+    elif verbose.lower() == "none":
+        verbose = 0
+    elif verbose.lower() == "true":
+        verbose = 1
+    else:
+        try:
+            verbose = int(verbose)
+            if verbose < 0:
+                print("\nInvalid value for verbose"\
+                        " {}".format(verbose))
+                print("Valid values are: True, False, None and"\
+                        " positive integers")
+                print("Verbose is set to 0")
+                verbose = 0
+        except ValueError as e:
+            print("\nInvalid value for verbose {}".format(verbose))
+            print("Valid values are: True, False, None and"\
+                    " positive integers")
+            print("Verbose is set to 1")
+            verbose = 1
+
     if evomodel_type not in ["jc69", "k80", "gtr"]:
-        print("evomodel_type should be jc69, k80 or gtr,"\
+        print("\nevomodel_type should be jc69, k80 or gtr,"\
                 " not {}".format(evomodel_type), file=sys.stderr)
         sys.exit()
 
     # Computing device setting
     if device_str != "cpu" and not torch.cuda.is_available():
         if verbose: 
-            print("Cuda is not available. Changing device to 'cpu'")
+            print("\nCuda is not available. Changing device to 'cpu'")
         device_str = 'cpu'
 
     device = torch.device(device_str)
@@ -235,6 +260,10 @@ if __name__ == "__main__":
     output_path = os.path.join(output_path, evomodel_type, job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
 
+    if verbose:
+        print("\nExperiment output: {}".format(
+            output_path))
+
     ## Load results
     ## ############
     results_file = output_path+"/{}_results.pkl".format(job_name)
@@ -248,7 +277,7 @@ if __name__ == "__main__":
         val_during_fit = True
 
     if verbose:
-        print("Validation during fitting: {}\n".format(
+        print("\nValidation during fitting: {}".format(
             val_during_fit))
 
     if sim_data:
@@ -264,7 +293,7 @@ if __name__ == "__main__":
             v_fasta_file = fasta_val_file
 
     if os.path.isfile(results_file) and scores_from_file:
-        if verbose: print("\nLoading scores from file")
+        if verbose: print("\nLoading scores from file...")
         result_data = load(results_file)
         rep_results=result_data["rep_results"]
 
@@ -278,7 +307,7 @@ if __name__ == "__main__":
     ## Execute the evaluation
     ## ######################
     else:
-        if verbose: print("\nRunning the evaluation..")
+        if verbose: print("\nRunning the evaluation...")
 
         ## Data preparation
         ## ################
@@ -288,7 +317,7 @@ if __name__ == "__main__":
                     os.path.isfile(v_fasta_file) and from_fasta:
  
                 if verbose: 
-                    print("\nLoading simulated sequences from files")
+                    print("\nLoading simulated sequences from files...")
                 # Load from files
                 ax_sequences = fasta_to_list(x_fasta_file, verbose)
                 av_sequences = fasta_to_list(v_fasta_file, verbose)
@@ -300,7 +329,7 @@ if __name__ == "__main__":
                 v_sequences = av_sequences[1:]
 
             else:
-                if verbose: print("\nSimulating sequences")
+                if verbose: print("\nSimulating sequences...")
                 # Evolve sequences
                 tree=build_star_tree(sim_blengths)
 
@@ -325,7 +354,7 @@ if __name__ == "__main__":
                         verbose=verbose)
 
         else:
-            if verbose: print("\nLoading sequences from files")
+            if verbose: print("\nLoading sequences from files...")
             x_sequences = fasta_to_list(x_fasta_file, verbose)
             v_sequences = fasta_to_list(v_fasta_file, verbose)
 
@@ -360,16 +389,17 @@ if __name__ == "__main__":
                     sim_freqs_vgm)
 
             if verbose:
-                print("\nLog likelihood of the data {}\n".format(
+                print("\nLog likelihood of the data {}".format(
                     logl_data))
 
         x_dim = 4
         a_dim = 4
         m_dim = len(x_sequences) # Number of sequences
 
-        if verbose: print()
         ## Get prior hyper-parameter values
         ## ################################
+        if verbose:
+            print("\nGet the prior hyper-parameters...")
 
         ancestor_prior = get_categorical_prior(ancestor_prior_conf,
                 "ancestor", verbose=verbose)
@@ -477,7 +507,7 @@ if __name__ == "__main__":
 
     ## Generate report file from sampling step
     ## #######################################
-    if verbose: print("\nGenerate reports..")
+    if verbose: print("\nGenerate reports...")
 
     estim_gens = aggregate_sampled_estimates(
             rep_results, "gen_results")
@@ -489,7 +519,7 @@ if __name__ == "__main__":
 
     ## Ploting results
     ## ###############
-    if verbose: print("\nPlotting..")
+    if verbose: print("\nPlotting...")
     plt_elbo_ll_kl_rep_figure(
             the_scores,
             output_path+"/{}_rep_fig".format(job_name),

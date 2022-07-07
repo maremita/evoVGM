@@ -123,7 +123,7 @@ if __name__ == "__main__":
     job_name = config.get("settings", "job_name", fallback=None)
     seed = config.getint("settings", "seed")
     device_str = config.get("settings", "device")
-    verbose = config.getboolean("settings", "verbose")
+    verbose = config.get("settings", "verbose")
 
     # Evo variational model type
     evomodel_type = config.get("subvmodel", "evomodel")
@@ -158,6 +158,30 @@ if __name__ == "__main__":
             fallback=False)
     print_xtick_every = config.getint("plotting",
             "print_xtick_every", fallback=10)
+
+    # Process verbose
+    if verbose.lower() == "false":
+        verbose = 0
+    elif verbose.lower() == "none":
+        verbose = 0
+    elif verbose.lower() == "true":
+        verbose = 1
+    else:
+        try:
+            verbose = int(verbose)
+            if verbose < 0:
+                print("\nInvalid value for verbose"\
+                        " {}".format(verbose))
+                print("Valid values are: True, False, None and"\
+                        " positive integers")
+                print("Verbose is set to 0")
+                verbose = 0
+        except ValueError as e:
+            print("\nInvalid value for verbose {}".format(verbose))
+            print("Valid values are: True, False, None and"\
+                    " positive integers")
+            print("Verbose is set to 1")
+            verbose = 1
 
     if evomodel_type not in ["jc69", "k80", "gtr"]:
         print("evomodel_type should be jc69, k80 or gtr,"\
