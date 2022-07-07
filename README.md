@@ -1,4 +1,8 @@
-# EvoVGM: A Deep Variational Generative Model for Evolutionary Parameter Estimation
+# EvoVGM: a Deep Variational Generative Model for Evolutionary Parameter Estimation
+
+### Disclaimer
+**EvoVGM** is actively in the development phase. The names of the different package entities and the default values are subject to change.
+Please, feel free to contact me if you want to refactor, add, or discuss a feature.
 
 ## Overview
 **EvoVGM** is a deep variational generative model that simultaneously estimates local evolutionary parameters and generates nucleotide sequence data. Like phylogenetic inference,  we explicitly integrate a continuous-time Markov chain substitution model into the generative model like phylogenetic inference. 
@@ -22,7 +26,7 @@ pip install .
 ```
 
 ## Usage
-### Using `evovgm.py`, the main script
+### Using `evovgm.py`, the main program
 `evovgm.py` is the main program that uses the **EvoVGM** model with different substitution models (JC69, K80 and GTR). The model can be trained for `nb_replicates` times.  The program can use a sequence alignment from a `FASTA` file or simulates a new sequence alignment using evolutionary parameters defined in the configuration file. A new  configuration file can be copied and customized from `evovgm_conf_template.ini`.
 Once the `evoVGM` package is installed, `evovgm.py` can be called from anywhere.
 
@@ -81,7 +85,7 @@ The EvoVGM package including the modules and the scripts is distributed under th
 ## How to cite
 ```
 @article{remita2022evovgm,
-  title={EvoVGM: A Deep Variational Generative Model for Evolutionary Parameter Estimation},
+  title={EvoVGM: a Deep Variational Generative Model for Evolutionary Parameter Estimation},
   author={Remita, Amine M and Diallo, Abdoulaye Banir{\'e}},
   journal={arXiv preprint arXiv:2205.13034},
   year={2022}
@@ -89,5 +93,6 @@ The EvoVGM package including the modules and the scripts is distributed under th
 ```
 
 ## Contact
+If you have any questions, please do not hesitate to contact:
 - Amine Remita <remita.amine@courrier.uqam.ca>
 
