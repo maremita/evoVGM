@@ -73,7 +73,13 @@ class BaseEvoVGM(ABC):
                     lr=optim_learning_rate,
                     weight_decay=optim_weight_decay)
 
+        # Time for printing
         start = time.time()
+
+        # Times of fitting and validation steps
+        # without pre/post processing tasks
+        self.total_fit_time = 0
+        self.total_val_time = 0
 
         if X_val_counts is not None: N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
@@ -93,6 +99,7 @@ class BaseEvoVGM(ABC):
 
         for epoch in range(1, max_iter + 1):
 
+            fit_time = time.time()
             optimizer.zero_grad()
             try:
                 fit_dict = self(
@@ -117,10 +124,13 @@ class BaseEvoVGM(ABC):
                         " of an exception in fit()".format(epoch))
                 print(e)
                 break
+ 
+            self.total_fit_time += time.time() - fit_time
 
             # Validation and printing
             with torch.no_grad():
                 if X_val is not None:
+                    val_time = time.time()
                     try:
                         val_dict = self.generate(
                                 X_val,
@@ -141,6 +151,7 @@ class BaseEvoVGM(ABC):
                                 " generate()".format(epoch))
                         print(e)
                         break
+                    self.total_val_time += time.time() - val_time
 
                 if verbose:
                     if epoch % 10 == 0:
@@ -217,9 +228,10 @@ class BaseEvoVGM(ABC):
                             val_estim['a_euclidean'] = a_euc_dist
 
                         self.val_estimates.append(val_estim)
+        # End of fitting/validating
 
-        # convert to ndarray to facilitate post-processing
         with torch.no_grad():
+            # Convert to ndarray to facilitate post-processing
             self.elbos_list = np.array(self.elbos_list)
             self.lls_list = np.array(self.lls_list) 
             self.kls_list = np.array(self.kls_list)
