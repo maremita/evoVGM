@@ -25,15 +25,14 @@ class BaseEvoVGM(ABC):
                 site_counts = torch.ones(sites.shape[0]).to(
                         self.device_)
             # Don't shuffle sites
-            return dict_to_numpy(
-                    self(
-                        sites,
-                        site_counts,
-                        latent_sample_size=latent_sample_size,
-                        sample_temp=sample_temp, 
-                        alpha_kl=alpha_kl, 
-                        shuffle_sites=False,
-                        keep_vars=keep_vars))
+            return self(
+                    sites,
+                    site_counts,
+                    latent_sample_size=latent_sample_size,
+                    sample_temp=sample_temp, 
+                    alpha_kl=alpha_kl, 
+                    shuffle_sites=False,
+                    keep_vars=keep_vars)
 
     def fit(self,
             X_train,
@@ -73,29 +72,33 @@ class BaseEvoVGM(ABC):
                     lr=optim_learning_rate,
                     weight_decay=optim_weight_decay)
 
+        # dict to be returned
+        # it will contain the results of fit/val
+        ret = {}
+
         # Time for printing
         start = time.time()
 
         # Times of fitting and validation steps
         # without pre/post processing tasks
-        self.total_fit_time = 0
-        self.total_val_time = 0
+        ret["total_fit_time"] = 0
+        ret["total_val_time"] = 0
 
         if X_val_counts is not None: N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
  
-        self.elbos_list = []
-        self.lls_list = []
-        self.kls_list = []
+        ret["elbos_list"] = []
+        ret["lls_list"] = []
+        ret["kls_list"] = []
 
-        if keep_fit_history: self.fit_estimates = []
-        if keep_val_history: self.val_estimates = []
+        if keep_fit_history: ret["fit_estimates"] = []
+        if keep_val_history: ret["val_estimates"] = []
 
         if X_val is not None:
             np_X_val = X_val.cpu().numpy()
-            self.elbos_val_list = []
-            self.lls_val_list = []
-            self.kls_val_list = []
+            ret["elbos_val_list"] = []
+            ret["lls_val_list"] = []
+            ret["kls_val_list"] = []
 
         for epoch in range(1, max_iter + 1):
 
@@ -125,7 +128,7 @@ class BaseEvoVGM(ABC):
                 print(e)
                 break
  
-            self.total_fit_time += time.time() - fit_time
+            ret["total_fit_time"] += time.time() - fit_time
 
             # Validation and printing
             with torch.no_grad():
@@ -151,7 +154,7 @@ class BaseEvoVGM(ABC):
                                 " generate()".format(epoch))
                         print(e)
                         break
-                    self.total_val_time += time.time() - val_time
+                    ret["total_val_time"] += time.time() - val_time
 
                 if verbose:
                     if epoch % 10 == 0:
@@ -170,21 +173,21 @@ class BaseEvoVGM(ABC):
                         print(chaine, end="\r")
 
                 # Add measure values to lists if all is alright
-                self.elbos_list.append(elbos.item())
-                self.lls_list.append(lls.item())
-                self.kls_list.append(kls.item())
+                ret["elbos_list"].append(elbos.item())
+                ret["lls_list"].append(lls.item())
+                ret["kls_list"].append(kls.item())
 
                 if keep_fit_history:
                     fit_estim = dict()
                     for estim in ["b", "r", "f", "k"]:
                         if estim in fit_dict:
                             fit_estim[estim] = fit_dict[estim].cpu()
-                    self.fit_estimates.append(fit_estim)
+                    ret["fit_estimates"].append(fit_estim)
 
                 if X_val is not None:
-                    self.elbos_val_list.append(elbos_val.item())
-                    self.lls_val_list.append(lls_val.item())
-                    self.kls_val_list.append(kls_val.item())
+                    ret["elbos_val_list"].append(elbos_val.item())
+                    ret["lls_val_list"].append(lls_val.item())
+                    ret["kls_val_list"].append(kls_val.item())
 
                     if keep_val_history:
                         val_estim = dict()
@@ -207,7 +210,8 @@ class BaseEvoVGM(ABC):
                             np_X_val[:,i,:].argmax(axis=1))\
                                     for i in range(
                                         np_X_val.shape[1])])
-                        x_euc_dist = np.linalg.norm(xrecons -np_X_val,
+                        x_euc_dist = np.linalg.norm(
+                                xrecons -np_X_val,
                                 axis=2).mean(0)
                         val_estim['x_hamming'] = x_ham_dist
                         val_estim['x_euclidean'] = x_euc_dist
@@ -227,15 +231,17 @@ class BaseEvoVGM(ABC):
                             val_estim['a_hamming'] = a_ham_dist
                             val_estim['a_euclidean'] = a_euc_dist
 
-                        self.val_estimates.append(val_estim)
+                        ret["val_estimates"].append(val_estim)
         # End of fitting/validating
 
         with torch.no_grad():
             # Convert to ndarray to facilitate post-processing
-            self.elbos_list = np.array(self.elbos_list)
-            self.lls_list = np.array(self.lls_list) 
-            self.kls_list = np.array(self.kls_list)
+            ret["elbos_list"] = np.array(ret["elbos_list"])
+            ret["lls_list"] = np.array(ret["lls_list"]) 
+            ret["kls_list"] = np.array(ret["kls_list"])
             if X_val is not None:
-                self.elbos_val_list = np.array(self.elbos_val_list)
-                self.lls_val_list = np.array(self.lls_val_list) 
-                self.kls_val_list = np.array(self.kls_val_list)
+                ret["elbos_val_list"]=np.array(ret["elbos_val_list"])
+                ret["lls_val_list"] = np.array(ret["lls_val_list"]) 
+                ret["kls_val_list"] = np.array(ret["kls_val_list"])
+
+        return ret

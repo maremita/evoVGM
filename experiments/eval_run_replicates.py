@@ -37,6 +37,8 @@ from joblib import dump, load
 __author__ = "amine remita"
 
 """
+Legacy version of evovgm.py
+Please use evovgm.py instead.
 """
 
 ## Evaluation function
@@ -59,15 +61,16 @@ def eval_evomodel(EvoModel, m_args, in_args):
             keep_val_history=True,
             verbose=False)
 
-    fit_hist = [e.elbos_list, e.lls_list, e.kls_list]
+    fit_hist = [ret["elbos_list"], ret["lls_list"], ret["kls_list"]]
+
     if in_args["X_val"] is not None:
         fit_hist.extend([
-            e.elbos_val_list,
-            e.lls_val_list,
-            e.kls_val_list])
+            ret["elbos_val_list"],
+            ret["lls_val_list"],
+            ret["kls_val_list"]])
 
     fit_hist = np.array(fit_hist)
-    val_hist_estim = e.val_estimates
+    val_hist_estim = ret["val_estimates"]
 
     val_results = e.generate(
             in_args["X_val"],

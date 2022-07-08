@@ -69,7 +69,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
 
     ## Fitting and param3ter estimation
     ## ################################
-    e.fit(fit_args["X"], fit_args["X_counts"],
+    ret = e.fit(fit_args["X"], fit_args["X_counts"],
             latent_sample_size=fit_args["nb_samples"],
             sample_temp=fit_args["sample_temp"], 
             alpha_kl=fit_args["alpha_kl"], 
@@ -85,16 +85,17 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             verbose=fit_args["verbose"]
             )
 
-    fit_hist = [e.elbos_list, e.lls_list, e.kls_list]
+    fit_hist = [ret["elbos_list"], ret["lls_list"], ret["kls_list"]]
 
     if fit_args["X_val"] is not None:
         fit_hist.extend([
-            e.elbos_val_list,
-            e.lls_val_list,
-            e.kls_val_list])
-        overall["val_hist_estim"] = e.val_estimates
+            ret["elbos_val_list"],
+            ret["lls_val_list"],
+            ret["kls_val_list"]])
+
+        overall["val_hist_estim"] = ret["val_estimates"]
     else:
-        overall["fit_hist_estim"] = e.fit_estimates
+        overall["fit_hist_estim"] = ret["fit_estimates"]
 
     overall["fit_hist"] = np.array(fit_hist)
 
@@ -113,6 +114,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             keep_vars=fit_args["keep_gen_vars"])
 
     return overall
+
 
 if __name__ == "__main__":
 
