@@ -27,8 +27,11 @@ pip install .
 
 ## Usage
 ### Using `evovgm.py`, the main program
-`evovgm.py` is the main program that uses the **EvoVGM** model with different substitution models (JC69, K80 and GTR). The model can be trained for `nb_replicates` times.  The program can use a sequence alignment from a `FASTA` file or simulates a new sequence alignment using evolutionary parameters defined in the configuration file. A new  configuration file can be copied and customized from `evovgm_conf_template.ini`.
-Once the `evoVGM` package is installed, `evovgm.py` can be called from anywhere.
+`evovgm.py` is the main program that uses the **EvoVGM** model with different substitution models (JC69, K80 and GTR).
+The model can be trained for `nb_replicates` times. 
+The program can use a sequence alignment from a `FASTA` file or simulates a new sequence alignment using evolutionary parameters defined in the configuration file.
+A new  configuration file can be copied and customized from `evovgm_conf_template.ini`.
+`evovgm.py` program could be found in the `scripts/` directory. However, once the `evoVGM` package is installed, it can be called from anywhere using this command line:
 
 ```
 evovgm.py evovgm_conf_template.ini
@@ -77,7 +80,7 @@ results = evoModel.generate(X_val, None,
                             alpha_kl=0.001)
 ```
 
-`experiments/train_evogtr.py`  is an example script that uses the `evoVGM` package to train `EvoVGM_GTR` model using simulated sequences.
+`scripts/train_evogtr.py`  is an example script that uses the `evoVGM` package to train `EvoVGM_GTR` model using simulated sequences.
 
 ## License
 The EvoVGM package including the modules and the scripts is distributed under the **MIT License**.

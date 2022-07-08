@@ -17,9 +17,8 @@ setup(
     author='Amine Remita',
     packages=find_packages(),
     scripts=[
-        "experiments/evovgm.py",
-        "experiments/train_evoVGM_GTR.py",
-        "experiments/eval_run_replicates.py",
+        "scripts/evovgm.py",
+        "scripts/train_evoVGM_GTR.py",
         ],
     install_requires=INSTALL_REQUIRES
 )
