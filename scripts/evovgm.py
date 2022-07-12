@@ -142,9 +142,9 @@ if __name__ == "__main__":
     validation = config.getboolean("data", "validation",
             fallback=True)
     sim_data = config.getboolean("data", "sim_data",
-            fallback=False)
+            fallback=True)
     sim_from_fasta = config.getboolean("data", "sim_from_fasta",
-            fallback=False)
+            fallback=True)
     fasta_fit_file = config.get("data", "fasta_fit_file",
             fallback="")
     fasta_val_file = config.get("data", "fasta_val_file",
