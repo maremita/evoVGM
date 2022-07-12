@@ -13,7 +13,7 @@ class GTRSubRateIndDirEncoder(nn.Module):
     def __init__(
             self,
             m_dim,
-            rates_prior=torch.ones(6),
+            rates_prior_hp=torch.ones(6),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -23,7 +23,7 @@ class GTRSubRateIndDirEncoder(nn.Module):
         self.device_ = device
 
         # Hyper-param for rate prior
-        self.pr = rates_prior.to(self.device_)
+        self.pr = rates_prior_hp.to(self.device_)
 
         self.rates = nn.Parameter(
                 torch.zeros(self.r_dim),
@@ -74,7 +74,7 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
             m_dim,
             h_dim, 
             n_layers=2,
-            rates_prior=torch.ones(6),
+            rates_prior_hp=torch.ones(6),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -87,7 +87,7 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
         self.device_ = device
 
         # Hyper-param for rate prior
-        self.pr = rates_prior.to(self.device_)
+        self.pr = rates_prior_hp.to(self.device_)
 
         self.noise = torch.zeros((self.in_dim)).uniform_(
                 ).to(self.device_)
@@ -151,7 +151,7 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
             m_dim,
             h_dim, 
             n_layers=2, 
-            freqs_prior=torch.ones(4),
+            freqs_prior_hp=torch.ones(4),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -164,7 +164,7 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
         self.device_ = device
 
         # Hyper-param for rate prior
-        self.pi = freqs_prior.to(self.device_) 
+        self.pi = freqs_prior_hp.to(self.device_) 
 
         self.noise = torch.zeros((self.in_dim)).uniform_(
                 ).to(self.device_)

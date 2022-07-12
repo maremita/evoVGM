@@ -50,7 +50,7 @@ import torch
 motifs_cats = build_msa_categorical(sequences) # sequences is a list of strings or a SeqCollection containing the list of the aligned sequences.
 X = torch.from_numpy(motifs_cats.data)
 X_val = X.clone().detach() # will be used in generation step
-X, X_counts = X.unique(dim=0, return_counts=True) # collaps X to unique patterns
+X, X_counts = X.unique(dim=0, return_counts=True) # collapse X to unique patterns
 
 # Instantiate an EvoVGM model with GTR substitution model
 evoModel = EvoVGM_GTR(
@@ -58,10 +58,10 @@ evoModel = EvoVGM_GTR(
         a_dim=4, # Size of one-hot encoding of an ancestral nucleotide
         h_dim=32, # Size of the hidden layers
         m_dim=len(sequences), # Number of sequences
-        ancestor_prior=torch.ones(4)/4,
-        branch_prior=torch.tensor([0.1, 1.]),
-        rates_prior=torch.ones(6),
-        freqs_prior=torch.ones(4))
+        ancestor_prior_hp=torch.ones(4)/4, # Hyper-param of ancestral prior dist.
+        branch_prior_hp=torch.tensor([0.1, 1.]), # Hyper-param of branch prior dist.
+        rates_prior_hp=torch.ones(6), # Hyper-param of rates prior dist.
+        freqs_prior_hp=torch.ones(4)) # Hyper-param of frequencies prior dist.
 
 # Fit the model to estimates the evolutionary parameters
 evoModel.fit(X, X_counts, 

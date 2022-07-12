@@ -174,40 +174,40 @@ if __name__ == "__main__":
             fallback=False)
 
     # Evo variational model type
-    evomodel_type = config.get("subvmodel", "evomodel",
+    evomodel_type = config.get("vb_model", "evomodel", # subvmodel
             fallback="gtr")
 
     # Hyper parameters
-    nb_replicates = config.getint("hperparams", "nb_replicates",
+    nb_replicates = config.getint("hyperparams", "nb_replicates",
             fallback=2)
-    nb_samples = config.getint("hperparams", "nb_samples",
+    nb_samples = config.getint("hyperparams", "nb_samples",
             fallback=10)
-    h_dim = config.getint("hperparams", "hidden_size",
+    h_dim = config.getint("hyperparams", "hidden_size",
             fallback=32)
-    nb_layers = config.getint("hperparams", "nb_layers", fallback=3)
-    sample_temp = config.getfloat("hperparams", "sample_temp",
+    nb_layers = config.getint("hyperparams", "nb_layers", fallback=3)
+    sample_temp = config.getfloat("hyperparams", "sample_temp",
             fallback=0.1)
-    alpha_kl = config.getfloat("hperparams", "alpha_kl",
+    alpha_kl = config.getfloat("hyperparams", "alpha_kl",
             fallback=0.0001)
-    n_epochs = config.getint("hperparams", "n_epochs",
+    n_epochs = config.getint("hyperparams", "n_epochs",
             fallback=100)
-    optim = config.get("hperparams", "optim",
+    optim = config.get("hyperparams", "optim",
             fallback="adam")
-    learning_rate = config.getfloat("hperparams", "learning_rate",
+    learning_rate = config.getfloat("hyperparams", "learning_rate",
             fallback=0.005)
-    weight_decay = config.getfloat("hperparams",
+    weight_decay = config.getfloat("hyperparams",
             "optim_weight_decay", fallback=0.00001)
 
     # Hyper-parameters of prior distributions
-    ancestor_prior_conf = config.get("priors", "ancestor_prior", 
+    ancestor_hp_conf = config.get("priors", "ancestor_prior_hp", 
             fallback="uniform")
-    branch_prior_conf = config.get("priors", "branch_prior", 
+    branch_hp_conf = config.get("priors", "branch_prior_hp",
             fallback="0.1,0.1")
-    kappa_prior_conf = config.get("priors", "kappa_prior", 
+    kappa_hp_conf = config.get("priors", "kappa_prior_hp",
             fallback="1.,1.")
-    rates_prior_conf = config.get("priors", "rates_prior",
+    rates_hp_conf = config.get("priors", "rates_prior_hp",
             fallback="uniform")
-    freqs_prior_conf = config.get("priors", "freqs_prior",
+    freqs_hp_conf = config.get("priors", "freqs_prior_hp",
             fallback="uniform")
 
     # plotting settings
@@ -448,20 +448,20 @@ if __name__ == "__main__":
         if verbose:
             print("\nGet the prior hyper-parameters...")
 
-        ancestor_prior = get_categorical_prior(ancestor_prior_conf,
+        ancestor_prior_hp = get_categorical_prior(ancestor_hp_conf,
                 "ancestor", verbose=verbose)
-        branch_prior = get_branch_prior(branch_prior_conf,
+        branch_prior_hp = get_branch_prior(branch_hp_conf,
                 verbose=verbose)
 
         if evomodel_type == "gtr":
             # Get rate and freq priors if the model is EvoVGM_GTR
-            rates_prior = get_categorical_prior(rates_prior_conf, 
+            rates_prior_hp = get_categorical_prior(rates_hp_conf, 
                     "rates", verbose=verbose)
-            freqs_prior = get_categorical_prior(freqs_prior_conf,
+            freqs_prior_hp = get_categorical_prior(freqs_hp_conf,
                     "freqs", verbose=verbose)
 
         elif evomodel_type == "k80":
-            kappa_prior = get_kappa_prior(kappa_prior_conf, 
+            kappa_prior_hp = get_kappa_prior(kappa_hp_conf, 
                     verbose=verbose)
 
         if verbose: print()
@@ -479,18 +479,18 @@ if __name__ == "__main__":
                 "a_dim":a_dim,
                 "h_dim":h_dim,
                 "m_dim":m_dim,
-                "ancestor_prior":ancestor_prior,
-                "branch_prior":branch_prior,
+                "ancestor_prior_hp":ancestor_prior_hp,
+                "branch_prior_hp":branch_prior_hp,
                 "device":device
                 }
 
         if evomodel_type == "gtr":
             # Add rate and freq priors if the model is EvoVGM_GTR
-            model_args["rates_prior"] = rates_prior
-            model_args["freqs_prior"] = freqs_prior
+            model_args["rates_prior_hp"] = rates_prior_hp
+            model_args["freqs_prior_hp"] = freqs_prior_hp
 
         elif evomodel_type == "k80":
-            model_args["kappa_prior"] = kappa_prior
+            model_args["kappa_prior_hp"] = kappa_prior_hp
 
         if validation:
             keep_fit_history=False

@@ -58,11 +58,10 @@ weight_decay = config.getfloat("hperparams", "optim_weight_decay")
 optim = config.get("hperparams", "optim")
 
 # priors values
-ancestor_prior_conf = config.get("priors", "ancestor_prior")
-branch_prior_conf = config.get("priors", "branch_prior") 
-rates_prior_conf = config.get("priors", "rates_prior")
-freqs_prior_conf = config.get("priors", "freqs_prior")
-
+ancestor_hp_conf = config.get("priors", "ancestor_prior_hp")
+branch_hp_conf = config.get("priors", "branch_prior_hp") 
+rates_hp_conf = config.get("priors", "rates_prior_hp")
+freqs_hp_conf = config.get("priors", "freqs_prior_hp")
 
 # Computing device setting
 if device_str != "cpu" and not torch.cuda.is_available():
@@ -115,22 +114,22 @@ m_dim = len(sequences) # Number of sequences
 print_every = 10
 
 # Get prior values
-ancestor_prior = get_categorical_prior(ancestor_prior_conf,
+ancestor_prior_hp = get_categorical_prior(ancestor_hp_conf,
         "ancestor", verbose=verbose)
-rates_prior = get_categorical_prior(rates_prior_conf, "rates",
+rates_prior_hp = get_categorical_prior(rates_hp_conf, "rates",
         verbose=verbose)
-freqs_prior = get_categorical_prior(freqs_prior_conf, "freqs",
+freqs_prior_hp = get_categorical_prior(freqs_hp_conf, "freqs",
         verbose=verbose)
-branch_prior = get_branch_prior(branch_prior_conf, verbose=verbose)
+branch_prior_hp = get_branch_prior(branch_hp_conf, verbose=verbose)
 
 # Instanciate the model
 
 # EvoVGTRW_KL infer ancestor and branch length and GTR params latent variables
 evoModel = EvoVGM_GTR(x_dim, a_dim, h_dim, m_dim,
-        ancestor_prior=ancestor_prior,
-        branch_prior=branch_prior,
-        rates_prior=rates_prior,
-        freqs_prior=freqs_prior,
+        ancestor_prior_hp=ancestor_prior_hp,
+        branch_prior_hp=branch_prior_hp,
+        rates_prior_hp=rates_prior_hp,
+        freqs_prior_hp=freqs_prior_hp,
         device=device).to(device)
 
 evoModel.fit(
@@ -144,5 +143,5 @@ evoModel.fit(
         optim_learning_rate=learning_rate,
         optim_weight_decay=weight_decay,
         verbose=verbose)
-    
+ 
 print("\nFin normale du programme\n")

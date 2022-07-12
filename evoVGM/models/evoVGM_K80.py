@@ -22,9 +22,9 @@ class EvoVGM_K80(nn.Module, BaseEvoVGM):
                  h_dim,
                  m_dim,
                  nb_layers=3,
-                 ancestor_prior=torch.ones(4)/4,
-                 branch_prior=torch.tensor([0.1, 0.1]),
-                 kappa_prior=torch.tensor([0.1]),
+                 ancestor_prior_hp=torch.ones(4)/4,
+                 branch_prior_hp=torch.tensor([0.1, 0.1]),
+                 kappa_prior_hp=torch.tensor([0.1]),
                  device=torch.device("cpu")):
 
         super().__init__()
@@ -37,9 +37,9 @@ class EvoVGM_K80(nn.Module, BaseEvoVGM):
         #
         self.device_ = device
         # hyper priors
-        self.ancestor_prior = ancestor_prior
-        self.branch_prior = branch_prior
-        self.kappa_prior = kappa_prior
+        self.ancestor_prior_hp = ancestor_prior_hp
+        self.branch_prior_hp = branch_prior_hp
+        self.kappa_prior_hp = kappa_prior_hp
 
         self.freqs = (torch.ones(4)/4).reshape(1, -1).to(
                 self.device_)
@@ -50,7 +50,7 @@ class EvoVGM_K80(nn.Module, BaseEvoVGM):
                 self.h_dim, 
                 self.a_dim, 
                 n_layers=self.nb_layers, 
-                ancestor_prior=self.ancestor_prior,
+                ancestor_prior_hp=self.ancestor_prior_hp,
                 device=self.device_)
 
         # Branche encoder  
@@ -58,14 +58,14 @@ class EvoVGM_K80(nn.Module, BaseEvoVGM):
                 self.m_dim, 
                 self.h_dim,
                 n_layers=self.nb_layers,
-                b_prior=self.branch_prior,
+                branch_prior_hp=self.branch_prior_hp,
                 device=self.device_)
 
         # Branche encoder  
         self.kappaEncoder = KappaIndDeepGammaEncoder(
                 self.h_dim,
                 n_layers=self.nb_layers,
-                k_prior=self.kappa_prior,
+                kappa_prior_hp=self.kappa_prior_hp,
                 device=self.device_)
 
         # decoder

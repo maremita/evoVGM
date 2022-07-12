@@ -17,7 +17,7 @@ class BranchIndDeepLogNEncoder(nn.Module):
             m_dim,
             h_dim,
             n_layers=3, 
-            b_prior=torch.tensor([0.1, 0.1]),
+            branch_prior_hp=torch.tensor([0.1, 0.1]),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -29,7 +29,8 @@ class BranchIndDeepLogNEncoder(nn.Module):
         self.device_ = device
 
         # hyper-param for branch mean and sigma LogNormal prior
-        self.prior_mu, self.prior_sigma = b_prior.to(self.device_)
+        self.prior_mu, self.prior_sigma = branch_prior_hp.to(
+                self.device_)
 
         self.noise = torch.zeros((self.m_dim, self.b_dim)).uniform_(
                 ).to(self.device_)
@@ -98,7 +99,7 @@ class BranchIndGammaEncoder(nn.Module):
     def __init__(
             self,
             m_dim, 
-            b_prior=torch.tensor([0.1, 0.1]),
+            branch_prior_hp=torch.tensor([0.1, 0.1]),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -108,7 +109,8 @@ class BranchIndGammaEncoder(nn.Module):
         self.device_ = device
 
         # hyper-param for branch mean and sigma LogNormal prior
-        self.prior_alpha, self.prior_rate = b_prior.to(self.device_)
+        self.prior_alpha, self.prior_rate = branch_prior_hp.to(
+                self.device_)
 
         self.b_alpha = nn.Parameter(
                 torch.zeros(self.m_dim, self.b_dim),
@@ -140,8 +142,9 @@ class BranchIndGammaEncoder(nn.Module):
         
         # Sample branch lengths
         samples = b_dist_q.rsample(torch.Size([sample_size]))
-#         print("samples shape {}".format(samples.shape)) # [sample_size, m_dim, b_dim]
-#         print(samples)
+        #print("samples shape {}".format(samples.shape))
+        # [sample_size, m_dim, b_dim]
+        #print(samples)
 
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):
@@ -167,7 +170,7 @@ class BranchIndDeepGammaEncoder(nn.Module):
             m_dim,
             h_dim, 
             n_layers=3,
-            b_prior=torch.tensor([0.1, 0.1]),
+            branch_prior_hp=torch.tensor([0.1, 0.1]),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -179,8 +182,9 @@ class BranchIndDeepGammaEncoder(nn.Module):
         self.device_ = device
 
         # hyper-param for branch mean and sigma LogNormal prior
-        self.prior_alpha, self.prior_rate = b_prior.to(self.device_)
- 
+        self.prior_alpha, self.prior_rate = branch_prior_hp.to(
+                self.device_)
+
         self.noise = torch.zeros((self.m_dim, self.b_dim)).uniform_(
                 ).to(self.device_)
         #self.noise = torch.zeros((self.m_dim, self.b_dim)).normal_(
@@ -226,7 +230,8 @@ class BranchIndDeepGammaEncoder(nn.Module):
         b_dist_q = Gamma(b_alpha, b_rate)
 
         samples = b_dist_q.rsample(torch.Size([sample_size]))
-#         print("samples shape {}".format(samples.shape)) # [sample_size, m_dim, b_dim]
+        #print("samples shape {}".format(samples.shape))
+        ## [sample_size, m_dim, b_dim]
         #print("samples", samples.device)
 
         if not isinstance(min_clamp, bool):

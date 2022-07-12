@@ -16,7 +16,7 @@ class KappaIndDeepGammaEncoder(nn.Module):
             self,
             h_dim, 
             n_layers=3,
-            k_prior=torch.tensor([0.1]),
+            kappa_prior_hp=torch.tensor([0.1]),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -27,8 +27,9 @@ class KappaIndDeepGammaEncoder(nn.Module):
         self.device_ = device
 
         # hyper-param for branch mean and sigma LogNormal prior
-        self.prior_alpha, self.prior_rate = k_prior.to(self.device_)
-        
+        self.prior_alpha, self.prior_rate = kappa_prior_hp.to(
+                self.device_)
+ 
         self.noise = torch.zeros((self.k_dim)).uniform_(
                 ).to(self.device_)
         #self.noise = torch.zeros((self.k_dim)).normal_(

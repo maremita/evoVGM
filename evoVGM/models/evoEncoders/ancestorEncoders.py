@@ -16,7 +16,7 @@ class AncestorDeepCatEncoder(nn.Module):
             h_dim,
             out_dim, 
             n_layers=3, 
-            ancestor_prior=torch.ones(4)/4,
+            ancestor_prior_hp=torch.ones(4)/4,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -28,7 +28,7 @@ class AncestorDeepCatEncoder(nn.Module):
         self.device_ = device
 
         # Hyper-param for character prior
-        self.pi = ancestor_prior.to(self.device_) 
+        self.pi = ancestor_prior_hp.to(self.device_) 
 
         layers = [nn.Linear(self.in_dim, self.h_dim,
             bias=True).to(self.device_), nn.ReLU()]
@@ -86,7 +86,7 @@ class AncestorIndDeepDirEncoder(nn.Module):
             a_dim,
             h_dim, 
             n_layers=3, 
-            ancestor_prior=torch.ones(4),
+            ancestor_prior_hp=torch.ones(4),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -97,7 +97,7 @@ class AncestorIndDeepDirEncoder(nn.Module):
         self.device_ = device
 
         # Hyper-param for character prior
-        self.pi = ancestor_prior
+        self.pi = ancestor_prior_hp
 
         self.noise = torch.zeros(self.a_dim).uniform_(
                 ).to(self.device_) # .normal_()
@@ -146,7 +146,7 @@ class AncestorDeepDirEncoder(nn.Module):
             h_dim,
             out_dim, 
             n_layers=3, 
-            ancestor_prior=torch.ones(4),
+            ancestor_prior_hp=torch.ones(4),
             device=torch.device("cpu")):
 
         super().__init__()
@@ -157,7 +157,7 @@ class AncestorDeepDirEncoder(nn.Module):
         self.n_layers = n_layers
         self.device_ = device
 
-        self.pi = ancestor_prior.to(self.device_) 
+        self.pi = ancestor_prior_hp.to(self.device_) 
         # Hyper-param for character prior
 
         layers = [nn.Linear(self.in_dim, self.h_dim,
