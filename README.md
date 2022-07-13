@@ -82,8 +82,11 @@ results = evoModel.generate(X_val, None,
 
 `scripts/train_evogtr.py`  is an example script that uses the `evoVGM` package to train `EvoVGM_GTR` model using simulated sequences.
 
-## License
-The EvoVGM package including the modules and the scripts is distributed under the **MIT License**.
+## Experiments
+The [`evoVGM_Exp`](https://github.com/maremita/evoVGM_Exp "evoVGM_Exp") project contains scripts that run `evovgm.py` on different grid schemas (evolutionary models, data types and sizes, and hyper-parameters) locally and on slurm clusters.
+There are also scripts that help sum up and plot the results of the experiments.
+
+To reproduce the experiments and the results of the [EvoVGM article](#how-to-cite), you can use the configuration files found in `evoVGM_Exp/exp_2022_bcb/`.
 
 ## How to cite
 ```
@@ -94,6 +97,8 @@ The EvoVGM package including the modules and the scripts is distributed under th
   year={2022}
 }
 ```
+## License
+The EvoVGM package including the modules and the scripts is distributed under the **MIT License**.
 
 ## Contact
 If you have any questions, please do not hesitate to contact:
