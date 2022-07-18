@@ -2,7 +2,7 @@ from evoVGM.utils import compute_corr
 
 #import os.path
 import numpy as np
-#import pandas as pd
+import pandas as pd
 import torch
 
 import logomaker as lm
@@ -24,10 +24,12 @@ def plt_elbo_ll_kl_rep_figure(
         print_xtick_every=10,
         legend='best',
         title=None,
-        plot_validation=False):
+        plot_validation=False,
+        fig_format="png",
+        fig_dpi=300):
 
-    fig_format= "png"
-    fig_dpi = 300
+    fig_format = fig_format
+    fig_dpi = fig_dpi
 
     fig_file = out_file+"."+fig_format
 
@@ -147,14 +149,17 @@ def plot_fit_estim_dist(
         print_xtick_every=10,
         y_limits=[0., None],
         legend='upper right',
-        title=None):
+        title=None,
+        fig_format="png",
+        fig_dpi=300):
+
     """
     scores here is a dictionary of estimate arrays.
     Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
     """
 
-    fig_format= "png"
-    fig_dpi = 300
+    fig_format = fig_format
+    fig_dpi = fig_dpi
 
     fig_file = out_file+"."+fig_format
 
@@ -237,15 +242,17 @@ def plot_fit_estim_corr(
         print_xtick_every=10,
         y_limits=[-1., 1.],
         legend='lower right',
-        title=None):
-        
+        title=None,    
+        fig_format="png",
+        fig_dpi=300):
+
     """
     scores here is a dictionary of estimate arrays.
     Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
     """
 
-    fig_format= "png"
-    fig_dpi = 300
+    fig_format = fig_format
+    fig_dpi = fig_dpi
 
     fig_file = out_file+"."+fig_format
 
@@ -333,14 +340,17 @@ def plot_fit_seq_dist(
         y_limits=[0., None],
         y_label="Distance",
         legend='upper right',
-        title=None):
+        title=None,
+        fig_format="png",
+        fig_dpi=300):
+
     """
     scores here is a dictionary of estimate arrays.
     Each array has the shape : (nb_reps, nb_epochs, *dist_shape)
     """
 
-    fig_format= "png"
-    fig_dpi = 300
+    fig_format = fig_format
+    fig_dpi = fig_dpi
 
     fig_file = out_file+"."+fig_format
 
@@ -377,7 +387,7 @@ def plot_fit_seq_dist(
                     s = dists.std(0)
 
                     ax.plot(x, m, "-", color=x_colors[xseq],
-                            label="$x_{}$".format(xseq))
+                            label="$x^{}$".format(xseq))
 
                     ax.fill_between(x, m-s, m+s, 
                             color=x_colors[xseq],
@@ -389,7 +399,7 @@ def plot_fit_seq_dist(
                 s = dists.std(0)
 
                 ax.plot(x, m, "-", color=a_color,
-                        label="a")
+                        label="$a$")
 
                 ax.fill_between(x, m-s, m+s, 
                         color=a_color,
@@ -638,4 +648,82 @@ def report_sampled_estimates(
 
     with open(out_file, "w") as fh:
         fh.write(chaine)
+
+## Plot logo of sequences and alignments
+## #####################################
+
+def make_sequence_logo_from_tensor(
+        in_tensor,
+        out_file,
+        slice_rows=slice(0,None),
+        figsize=(10,5),
+        tick_labelsize=20,
+        color_scheme='classic',
+        fig_format="png",
+        fig_dpi=300):
+
+    fig_format = fig_format
+    fig_dpi = fig_dpi
+
+    fig_file = out_file+"."+fig_format
+
+    df = pd.DataFrame(in_tensor,
+            columns = ['A', 'G', 'C', 'T'])
+    df = df.iloc[slice_rows, :]
+
+    n_dim = df.shape[0]
+
+    xticks = np.arange(0, n_dim+1, 10, dtype=np.int)
+    xticks[0] = 1
+    xticklabels = [str(i) for i in xticks]
+    xticks = xticks - 1
+
+    logo = lm.Logo(df, figsize=figsize, color_scheme=color_scheme)
+    logo.ax.tick_params(labelsize=tick_labelsize)
+    logo.ax.set_xticks(xticks)
+    logo.ax.set_xticklabels(xticklabels)
+    logo.fig.tight_layout()
+    logo.fig.savefig(fig_file, format=fig_format, dpi=fig_dpi)
+
+
+def make_alignment_logo_from_tensor(
+        in_tensor,
+        out_file, 
+        slice_rows=slice(0,None),
+        figsize=(10, 5),
+        tick_labelsize=20,
+        fig_format="png",
+        fig_dpi=300):
+
+    fig_format = fig_format
+    fig_dpi = fig_dpi
+
+    fig_file = out_file+"."+fig_format
+
+    m_seqs = in_tensor.shape[1]
+    if slice_rows.stop:
+        n_dim = slice_rows.stop
+    else:
+        n_dim = in_tensor.shape[0]
+
+    xticks = np.arange(0, n_dim+1, 10, dtype=np.int)
+    xticks[0] = 1
+    xticklabels = [str(i) for i in xticks]
+    xticks = xticks - 1
+
+    fig, axs = plt.subplots(m_seqs, 1, figsize=figsize)
+    plt.subplots_adjust(wspace=0.2, hspace=0.4)
+
+    for m in range(m_seqs):
+        x = in_tensor[:, m, :]
+        x_df = pd.DataFrame(x,
+                columns = ['A', 'G', 'C', 'T'])
+        x_df = x_df.iloc[slice_rows, :]
+        lm.Logo(x_df, ax=axs[m])
+        axs[m].tick_params(labelsize=tick_labelsize)
+        axs[m].set_xticks(xticks)
+        axs[m].set_xticklabels(xticklabels)
+
+    fig.tight_layout()
+    plt.savefig(fig_file, format=fig_format, dpi=fig_dpi)
 

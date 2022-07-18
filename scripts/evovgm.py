@@ -20,6 +20,8 @@ from evoVGM.reports import plot_fit_estim_corr
 from evoVGM.reports import plot_fit_seq_dist
 from evoVGM.reports import aggregate_sampled_estimates
 from evoVGM.reports import report_sampled_estimates
+from evoVGM.reports import make_sequence_logo_from_tensor
+from evoVGM.reports import make_alignment_logo_from_tensor
 
 from evoVGM.models import compute_log_likelihood_data 
 from evoVGM.models import EvoVGM_JC69
@@ -216,6 +218,8 @@ if __name__ == "__main__":
             fallback=False)
     print_xtick_every = config.getint("plotting",
             "print_xtick_every", fallback=10)
+    make_logos = config.getboolean("plotting",
+            "make_logos", fallback=True)
 
     # Process verbose
     if verbose.lower() == "false":
@@ -278,14 +282,50 @@ if __name__ == "__main__":
         print("\nExperiment output: {}".format(
             output_path))
 
+    ## Get Fasta file names
+    ## #########################
+    if sim_data:
+        # Files paths of simulated data
+        # training sequences
+        x_fasta_file = output_path+"/{}_train.fasta".format(
+                job_name)
+        # validation sequences
+        v_fasta_file = output_path+"/{}_valid.fasta".format(
+                job_name)
+    else:
+        # Files paths of given FASTA files
+        # training sequences
+        x_fasta_file = fasta_fit_file
+        # validation sequences
+        v_fasta_file = fasta_fit_file
+
+        if validation and os.path.isfile(fasta_val_file):
+            v_fasta_file = fasta_val_file
+
     ## Loading results from file
     ## #########################
     results_file = output_path+"/{}_results.pkl".format(job_name)
 
     if os.path.isfile(results_file) and scores_from_file:
         if verbose: print("\nLoading scores from file...")
+
+        # Get the results
         result_data = load(results_file)
         rep_results=result_data["rep_results"]
+        
+        # Get X_gen ndarray 
+        # used in the generation step as input 
+        x_gen_fasta = x_fasta_file
+        if validation:
+            x_gen_fasta = v_fasta_file
+
+        if sim_data:
+            # Simulated Fasta contains ancestral sequence, to discard
+            x_gen_sequences = fasta_to_list(x_gen_fasta, verbose)[1:]
+        else:
+            x_gen_sequences = fasta_to_list(x_gen_fasta, verbose)
+
+        X_gen = build_msa_categorical(x_gen_sequences).data
 
     ## Execute the evaluation and save results
     ## #######################################
@@ -304,13 +344,13 @@ if __name__ == "__main__":
         ## Data preparation
         ## ################
         if sim_data:
-            # Files paths of simulated data
-            # training sequences
-            x_fasta_file = output_path+"/{}_train.fasta".format(
-                    job_name)
-            # validation sequences
-            v_fasta_file = output_path+"/{}_valid.fasta".format(
-                    job_name)
+            ## Files paths of simulated data
+            ## training sequences
+            #x_fasta_file = output_path+"/{}_train.fasta".format(
+            #        job_name)
+            ## validation sequences
+            #v_fasta_file = output_path+"/{}_valid.fasta".format(
+            #        job_name)
 
             # Extract data from simulated FASTA files if they exist
             if os.path.isfile(x_fasta_file) and sim_from_fasta:
@@ -397,14 +437,14 @@ if __name__ == "__main__":
 
         # Extract data from given FASTA files
         else:
-            # Files paths of given FASTA files
-            # training sequences
-            x_fasta_file = fasta_fit_file
-            # validation sequences
-            v_fasta_file = fasta_fit_file
+            ## Files paths of given FASTA files
+            ## training sequences
+            #x_fasta_file = fasta_fit_file
+            ## validation sequences
+            #v_fasta_file = fasta_fit_file
 
-            if validation and os.path.isfile(fasta_val_file):
-                v_fasta_file = fasta_val_file
+            #if validation and os.path.isfile(fasta_val_file):
+            #    v_fasta_file = fasta_val_file
 
             # Given FASTA files do not contain root sequences
             if verbose: print("\nLoading sequences from files...")
@@ -656,5 +696,65 @@ if __name__ == "__main__":
                 y_limits=[-0.1, 1.1],
                 y_label="Hamming distance",
                 legend='upper right')
+
+    if make_logos:
+        if verbose: print("\nMaking sequence logos...")
+
+        n_dim = estim_gens["x"].shape[1]
+        m_dim = estim_gens["x"].shape[2]
+
+        wu = n_dim # width unit
+        if wu > 15: wu = 15
+
+        # Input alignment logo
+        make_alignment_logo_from_tensor(
+                X_gen,
+                output_path+"/{}_logo_x_aln".format(job_name),
+                slice_rows=slice(0, 300),
+                tick_labelsize=40,
+                figsize=(100, m_dim*3),
+                fig_format="png",
+                fig_dpi=50)
+
+        # Collapsed input alignment logo
+        make_sequence_logo_from_tensor(
+                X_gen.mean(1),
+                output_path+"/{}_logo_x_collapsed".format(job_name),
+                slice_rows=slice(0, 300),
+                tick_labelsize=40,
+                figsize=(100, 3),
+                fig_format="png",
+                fig_dpi=50)
+
+        # ancestor sequence logo
+        make_sequence_logo_from_tensor(
+                estim_gens["a"].mean(0),
+                output_path+"/{}_logo_a".format(job_name),
+                slice_rows=slice(0, 300),
+                tick_labelsize=40,
+                figsize=(100, 3),
+                fig_format="png",
+                fig_dpi=50)
+
+        # x_recon alignment
+        make_alignment_logo_from_tensor(
+                estim_gens["x"].mean(0),
+                output_path+"/{}_logo_xrecons_aln".format(job_name),
+                slice_rows=slice(0, 300),
+                tick_labelsize=40,
+                figsize=(100, m_dim*3),
+                fig_format="png",
+                fig_dpi=50)
+
+        # Collapsed x_recons alignment
+        make_sequence_logo_from_tensor(
+                estim_gens["x"].mean(0).mean(1),
+                output_path+"/{}_logo_xrecons_collapsed".format(
+                    job_name),
+                slice_rows=slice(0, 300),
+                tick_labelsize=40,
+                figsize=(100, 3),
+                fig_format="png",
+                fig_dpi=50)
 
     print("\nFin normale du programme\n")
