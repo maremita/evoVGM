@@ -63,7 +63,6 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
 
         # GTR Substitution Rate Encoder
         self.gtrSubEncoder = GTRSubRateIndDeepDirEncoder(
-                self.m_dim,
                 self.h_dim, 
                 n_layers=self.nb_layers,
                 rates_prior_hp=self.rates_prior_hp,
@@ -71,7 +70,6 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
  
         # GTR stationary frequencies Encoder
         self.gtrFreqEncoder = GTRfreqIndDeepDirEncoder(
-                self.m_dim,
                 self.h_dim,
                 n_layers=self.nb_layers, 
                 freqs_prior_hp=self.freqs_prior_hp,
@@ -128,13 +126,13 @@ class EvoVGM_GTR(nn.Module, BaseEvoVGM):
         # Sample Substitution rates
         r_ws, r_kl_ws = self.gtrSubEncoder(latent_sample_size)
         #print("r_kl_ws")
-        #print(r_kl_ws.shape) # [m_dim, 1]
+        #print(r_kl_ws.shape) # [1]
         #print(r_kl_ws)
 
         # Sample Stationary frequencies
         f_ws, f_kl_ws = self.gtrFreqEncoder(latent_sample_size)
         #print("f_kl_ws")
-        #print(f_kl_ws.shape) # [m_dim, 1]
+        #print(f_kl_ws.shape) # [1]
         #print(f_kl_ws)
 
         kl_qprior = N * (b_kl_ws.sum() + r_kl_ws + f_kl_ws)

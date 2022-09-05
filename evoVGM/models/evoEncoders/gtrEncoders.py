@@ -12,13 +12,11 @@ class GTRSubRateIndDirEncoder(nn.Module):
 
     def __init__(
             self,
-            m_dim,
             rates_prior_hp=torch.ones(6),
             device=torch.device("cpu")):
 
         super().__init__()
 
-        self.m_dim = m_dim
         self.r_dim = 6      # AG, AC, AT, GC, GT, CT 
         self.device_ = device
 
@@ -32,7 +30,7 @@ class GTRSubRateIndDirEncoder(nn.Module):
 
         # Prior distribution
         self.r_dist_p = Dirichlet(self.pr)
-        
+ 
     def forward(
             self, 
             sample_size=1,
@@ -61,7 +59,7 @@ class GTRSubRateIndDirEncoder(nn.Module):
 
         r_kl = kl_divergence(r_dist_q, self.r_dist_p).flatten()
 #         print("r_kl")
-#         print(r_kl.shape) # [m_dim, 1]
+#         print(r_kl.shape) # [1]
 #         print(r_kl)
 
         return samples, r_kl
@@ -71,7 +69,6 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
 
     def __init__(
             self,
-            m_dim,
             h_dim, 
             n_layers=2,
             rates_prior_hp=torch.ones(6),
@@ -79,7 +76,6 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
 
         super().__init__()
 
-        self.m_dim = m_dim
         self.h_dim = h_dim
         self.in_dim = 6     # AG, AC, AT, GC, GT, CT
         self.r_dim = 6     # AG, AC, AT, GC, GT, CT
@@ -138,7 +134,7 @@ class GTRSubRateIndDeepDirEncoder(nn.Module):
 
         r_kl = kl_divergence(r_dist_q, self.r_dist_p).flatten()
 #         print("r_kl")
-#         print(r_kl.shape) # [m_dim, 1]
+#         print(r_kl.shape) # [1]
 #         print(r_kl)
 
         return samples, r_kl
@@ -148,7 +144,6 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
 
     def __init__(
             self,
-            m_dim,
             h_dim, 
             n_layers=2, 
             freqs_prior_hp=torch.ones(4),
@@ -156,7 +151,6 @@ class GTRfreqIndDeepDirEncoder(nn.Module):
 
         super().__init__()
 
-        self.m_dim = m_dim
         self.h_dim = h_dim
         self.in_dim = 4
         self.f_dim = 4
